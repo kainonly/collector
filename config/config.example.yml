@@ -1,0 +1,15 @@
+debug: true
+amqp:
+  host: localhost
+  port: 5672
+  username: guest
+  password: guest
+  vhost: /
+elastic:
+  addresses:
+    - http://localhost:9200
+    - http://localhost:9201
+  username:
+  password:
+  cloud_id:
+  api_key:
