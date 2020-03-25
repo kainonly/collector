@@ -1,3 +1,3 @@
-# elastic-stash-collector
+# elastic-queue-logger
 
-elastic queue log data collector
+elasticsearch queue service logger

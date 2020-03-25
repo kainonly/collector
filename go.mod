@@ -1,4 +1,4 @@
-module schedule-microservice
+module elastic-queue-logger
 
 go 1.14
 
