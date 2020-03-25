@@ -1,2 +1,3 @@
-# schedule-collector
-Manage scheduled tasks collector
+# elastic-stash-collector
+
+elastic queue log data collector
