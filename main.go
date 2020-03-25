@@ -30,6 +30,10 @@ func main() {
 			http.ListenAndServe(":6060", nil)
 		}()
 	}
+	err = common.SetLogger(&cfg.Log)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	bootstrap := consumer.Bootstrap(
 		&cfg.Amqp,
 		elastic.Create(cfg.Elastic),

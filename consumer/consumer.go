@@ -6,6 +6,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
+	"os"
 )
 
 type Consumer struct {
@@ -62,16 +63,24 @@ func (c *Consumer) Subscriber(option common.ConsumerOption) (err error) {
 	}
 	go func() {
 		for d := range delivery {
+			var file *os.File
+			if common.OpenStorage() {
+				file, err = common.LogFile(option.Identity)
+				if err != nil {
+					return
+				}
+				log.SetOutput(file)
+			}
 			if jsoniter.Valid(d.Body) {
 				err := c.elastic.Index(option.Index, d.Body)
 				if err != nil {
-					log.Fatalln(err)
+					log.Error("nack:", err)
 					d.Nack(false, true)
 				}
-				log.Info("success")
+				log.Info("ack:", string(d.Body))
 				d.Ack(false)
 			} else {
-				log.Error("reject")
+				log.Error("reject:", string(d.Body))
 				d.Reject(false)
 			}
 		}

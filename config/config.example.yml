@@ -13,3 +13,6 @@ elastic:
   password:
   cloud_id:
   api_key:
+log:
+  storage: true
+  storage_dir: ./log
