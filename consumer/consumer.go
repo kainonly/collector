@@ -2,6 +2,8 @@ package consumer
 
 import (
 	"elastic-queue-logger/common"
+	"elastic-queue-logger/elastic"
+	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
@@ -9,9 +11,10 @@ import (
 type Consumer struct {
 	conn    *amqp.Connection
 	channel map[string]*amqp.Channel
+	elastic *elastic.Elastic
 }
 
-func Bootstrap(opt *common.AmqpOption) *Consumer {
+func Bootstrap(opt *common.AmqpOption, elastic *elastic.Elastic) *Consumer {
 	var err error
 	consumer := new(Consumer)
 	consumer.conn, err = amqp.Dial(
@@ -21,6 +24,7 @@ func Bootstrap(opt *common.AmqpOption) *Consumer {
 		log.Fatalln(err)
 	}
 	consumer.channel = make(map[string]*amqp.Channel)
+	consumer.elastic = elastic
 	var configs []common.ConsumerOption
 	configs, err = common.ListConsumerOption()
 	if err != nil {
@@ -58,9 +62,18 @@ func (c *Consumer) Subscriber(option common.ConsumerOption) (err error) {
 	}
 	go func() {
 		for d := range delivery {
-			log.Info(option.Identity)
-			log.Info(string(d.Body))
-			d.Ack(false)
+			if jsoniter.Valid(d.Body) {
+				err := c.elastic.Index(option.Index, d.Body)
+				if err != nil {
+					log.Fatalln(err)
+					d.Nack(false, true)
+				}
+				log.Info("success")
+				d.Ack(false)
+			} else {
+				log.Error("reject")
+				d.Reject(false)
+			}
 		}
 	}()
 	return

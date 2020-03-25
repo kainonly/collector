@@ -3,10 +3,12 @@ package main
 import (
 	"elastic-queue-logger/common"
 	"elastic-queue-logger/consumer"
+	"elastic-queue-logger/elastic"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 )
 
@@ -23,13 +25,15 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Info(cfg.Elastic)
 	if cfg.Debug {
 		go func() {
 			http.ListenAndServe(":6060", nil)
 		}()
 	}
-	bootstrap := consumer.Bootstrap(&cfg.Amqp)
+	bootstrap := consumer.Bootstrap(
+		&cfg.Amqp,
+		elastic.Create(cfg.Elastic),
+	)
 	defer bootstrap.Close()
 	select {}
 }

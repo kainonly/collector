@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
-	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,16 +22,11 @@ func Create(config elasticsearch.Config) *Elastic {
 	return elastic
 }
 
-func (c *Elastic) Index(index string, data interface{}) (err error) {
-	var buf bytes.Buffer
+func (c *Elastic) Index(index string, data []byte) (err error) {
 	var res *esapi.Response
-	err = jsoniter.NewEncoder(&buf).Encode(data)
-	if err != nil {
-		return
-	}
 	res, err = c.client.Index(
 		index,
-		&buf,
+		bytes.NewBuffer(data),
 	)
 	if err != nil {
 		return
