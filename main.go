@@ -35,7 +35,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	bootstrap := consumer.Bootstrap(
-		&cfg.Amqp,
+		cfg.Amqp,
 		elastic.Create(cfg.Elastic),
 	)
 	defer bootstrap.Close()

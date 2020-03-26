@@ -16,16 +16,9 @@ var (
 type (
 	AppOption struct {
 		Debug   bool                 `yaml:"debug"`
-		Amqp    AmqpOption           `yaml:"amqp"`
+		Amqp    string               `yaml:"amqp"`
 		Elastic elasticsearch.Config `yaml:"elastic"`
 		Log     LogOption            `yaml:"log"`
-	}
-	AmqpOption struct {
-		Host     string `yaml:"host"`
-		Port     string `yaml:"port"`
-		Username string `yaml:"username"`
-		Password string `yaml:"password"`
-		Vhost    string `yaml:"vhost"`
 	}
 	ConsumerOption struct {
 		Identity string `yaml:"identity"`

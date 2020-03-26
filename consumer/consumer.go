@@ -15,12 +15,10 @@ type Consumer struct {
 	elastic *elastic.Elastic
 }
 
-func Bootstrap(opt *common.AmqpOption, elastic *elastic.Elastic) *Consumer {
+func Bootstrap(uri string, elastic *elastic.Elastic) *Consumer {
 	var err error
 	consumer := new(Consumer)
-	consumer.conn, err = amqp.Dial(
-		"amqp://" + opt.Username + ":" + opt.Password + "@" + opt.Host + ":" + opt.Port + opt.Vhost,
-	)
+	consumer.conn, err = amqp.Dial(uri)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -51,7 +49,7 @@ func (c *Consumer) Subscriber(option common.ConsumerOption) (err error) {
 	}
 	delivery, err := c.channel[option.Identity].Consume(
 		option.Queue,
-		"",
+		option.Identity,
 		false,
 		false,
 		false,

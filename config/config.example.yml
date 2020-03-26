@@ -1,10 +1,5 @@
 debug: true
-amqp:
-  host: localhost
-  port: 5672
-  username: guest
-  password: guest
-  vhost: /
+amqp: amqp://guest:guest@localhost:5672/
 elastic:
   addresses:
     - http://localhost:9200
