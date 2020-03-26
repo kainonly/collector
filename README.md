@@ -27,12 +27,7 @@ services:
 For configuration, please refer to `config/config.example.yml`
 
 - **debug** `bool` Start debugging, ie `net/http/pprof`, access address is`http://localhost:6060`
-- **amqp** `object` AMQP configuration
-    - **host** `string` Connection address
-    - **port** `int` port
-    - **username** `string` username
-    - **password** `string` password
-    - **vhost** `string` vhost
+- **amqp** `object` AMQP uri `amqp://guest:guest@localhost:5672/`
 - **elastic** `object` Elasticsearch configuration
     - **addresses** `array` hosts
     - **username** `string`
