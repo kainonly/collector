@@ -4,7 +4,7 @@ import (
 	"elastic-queue-logger/common"
 	"elastic-queue-logger/consumer"
 	"elastic-queue-logger/elastic"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"net/http"
@@ -18,12 +18,12 @@ func main() {
 	}
 	in, err := ioutil.ReadFile("./config/config.yml")
 	if err != nil {
-		log.Fatalln(err)
+		logrus.Fatalln(err)
 	}
 	cfg := common.AppOption{}
 	err = yaml.Unmarshal(in, &cfg)
 	if err != nil {
-		log.Fatalln(err)
+		logrus.Fatalln(err)
 	}
 	if cfg.Debug {
 		go func() {
@@ -32,7 +32,7 @@ func main() {
 	}
 	err = common.SetLogger(&cfg.Log)
 	if err != nil {
-		log.Fatalln(err)
+		logrus.Fatalln(err)
 	}
 	bootstrap := consumer.Bootstrap(
 		cfg.Amqp,
