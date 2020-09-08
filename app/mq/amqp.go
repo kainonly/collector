@@ -63,7 +63,7 @@ func (c *AmqpDrive) reconnected() {
 	}
 }
 
-func (c *AmqpDrive) setChannel(ID string) (err error) {
+func (c *AmqpDrive) SetChannel(ID string) (err error) {
 	c.channel[ID], err = c.conn.Channel()
 	if err != nil {
 		return
@@ -87,7 +87,7 @@ func (c *AmqpDrive) listenChannel(ID string) {
 
 func (c *AmqpDrive) refreshChannel(ID string) {
 	for {
-		err := c.setChannel(ID)
+		err := c.SetChannel(ID)
 		if err != nil {
 			continue
 		}
@@ -95,7 +95,7 @@ func (c *AmqpDrive) refreshChannel(ID string) {
 		if err != nil {
 			continue
 		}
-		err = c.setConsume(option)
+		err = c.SetConsume(option)
 		if err != nil {
 			continue
 		}
@@ -104,12 +104,12 @@ func (c *AmqpDrive) refreshChannel(ID string) {
 	}
 }
 
-func (c *AmqpDrive) closeChannel(ID string) error {
+func (c *AmqpDrive) CloseChannel(ID string) error {
 	c.channelDone[ID] <- 1
 	return c.channel[ID].Close()
 }
 
-func (c *AmqpDrive) setConsume(option types.PipeOption) (err error) {
+func (c *AmqpDrive) SetConsume(option types.PipeOption) (err error) {
 	msgs, err := c.channel[option.Identity].Consume(
 		option.Queue,
 		option.Identity,

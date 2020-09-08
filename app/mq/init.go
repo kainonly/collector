@@ -6,16 +6,18 @@ import (
 )
 
 type MessageQueue struct {
-	schema *schema.Schema
 	types.MqOption
-	Amqp AmqpDrive
+	Amqp *AmqpDrive
 }
 
 func NewMessageQueue(option types.MqOption, schema *schema.Schema) (mq *MessageQueue, err error) {
 	mq = new(MessageQueue)
 	mq.MqOption = option
-	mq.schema = schema
 	if mq.Drive == "amqp" {
+		mq.Amqp, err = NewAmqpDrive(mq.Url, schema)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
