@@ -31,6 +31,7 @@ func NewAmqpDrive(url string, schema *schema.Schema) (session *AmqpDrive, err er
 	conn.NotifyClose(session.notifyConnClose)
 	go session.listenConn()
 	session.channel = make(map[string]*amqp.Channel)
+	session.channelDone = make(map[string]chan int)
 	session.notifyChanClose = make(map[string]chan *amqp.Error)
 	return
 }
