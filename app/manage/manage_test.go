@@ -2,7 +2,9 @@ package manage
 
 import (
 	"elastic-collector/app/mq"
+	"elastic-collector/app/schema"
 	"elastic-collector/app/types"
+	"github.com/elastic/go-elasticsearch/v8"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
@@ -27,11 +29,16 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalln("Service configuration file parsing failed", err)
 	}
-	mqlib, err := mq.NewMessageQueue(config.Mq)
+	elastic, err := elasticsearch.NewClient(config.Elastic)
 	if err != nil {
 		return
 	}
-	manager, err = NewElasticManager(config.Elastic, mqlib)
+	dataset := schema.New()
+	mqlib, err := mq.NewMessageQueue(config.Mq, elastic, dataset)
+	if err != nil {
+		return
+	}
+	manager, err = NewElasticManager(elastic, mqlib, dataset)
 	if err != nil {
 		log.Fatalln(err)
 	}
