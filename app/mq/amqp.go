@@ -1,8 +1,10 @@
 package mq
 
 import (
+	"elastic-collector/app/actions"
 	"elastic-collector/app/schema"
 	"elastic-collector/app/types"
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"time"
@@ -10,6 +12,7 @@ import (
 
 type AmqpDrive struct {
 	url             string
+	client          *elasticsearch.Client
 	schema          *schema.Schema
 	conn            *amqp.Connection
 	notifyConnClose chan *amqp.Error
@@ -18,9 +21,10 @@ type AmqpDrive struct {
 	notifyChanClose map[string]chan *amqp.Error
 }
 
-func NewAmqpDrive(url string, schema *schema.Schema) (session *AmqpDrive, err error) {
+func NewAmqpDrive(url string, client *elasticsearch.Client, schema *schema.Schema) (session *AmqpDrive, err error) {
 	session = new(AmqpDrive)
 	session.url = url
+	session.client = client
 	session.schema = schema
 	conn, err := amqp.Dial(url)
 	if err != nil {
@@ -123,6 +127,15 @@ func (c *AmqpDrive) SetConsume(option types.PipeOption) (err error) {
 	go func() {
 		for d := range msgs {
 			println(string(d.Body))
+			err = actions.Push(c.client, option.Index, d.Body)
+			if err != nil {
+				println(err.Error())
+				time.Sleep(time.Second * 15)
+				d.Nack(false, true)
+			} else {
+				println("ok")
+				d.Ack(false)
+			}
 		}
 	}()
 	return

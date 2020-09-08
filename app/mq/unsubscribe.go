@@ -11,7 +11,7 @@ func (c *MessageQueue) Unsubscribe(identity string) (err error) {
 }
 
 func (c *MessageQueue) unsubscribeFormAmqp(identity string) (err error) {
-	session := c.Amqp
+	session := c.amqp
 	err = session.CloseChannel(identity)
 	if err != nil {
 		return

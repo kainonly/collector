@@ -7,6 +7,7 @@ import (
 	"elastic-collector/app/schema"
 	"elastic-collector/app/types"
 	pb "elastic-collector/router"
+	"github.com/elastic/go-elasticsearch/v8"
 	"google.golang.org/grpc"
 	"net"
 	"net/http"
@@ -26,14 +27,18 @@ func Application(option *types.Config) (err error) {
 		return
 	}
 	server := grpc.NewServer()
+	elastic, err := elasticsearch.NewClient(option.Elastic)
+	if err != nil {
+		return
+	}
 	dataset := schema.New()
-	mqlib, err := mq.NewMessageQueue(option.Mq, dataset)
+	mqclient, err := mq.NewMessageQueue(option.Mq, elastic, dataset)
 	if err != nil {
 		return
 	}
 	manager, err := manage.NewElasticManager(
-		option.Elastic,
-		mqlib,
+		elastic,
+		mqclient,
 		dataset,
 	)
 	if err != nil {

@@ -13,7 +13,7 @@ func (c *MessageQueue) Subscribe(option types.PipeOption) (err error) {
 }
 
 func (c *MessageQueue) subscribeFormAmqp(option types.PipeOption) (err error) {
-	session := c.Amqp
+	session := c.amqp
 	err = session.SetChannel(option.Identity)
 	if err != nil {
 		return
