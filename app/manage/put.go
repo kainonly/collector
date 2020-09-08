@@ -1,6 +1,6 @@
 package manage
 
-import "elastic-transfer/app/types"
+import "elastic-collector/app/types"
 
 func (c *ElasticManager) Put(option types.PipeOption) (err error) {
 	c.pipes[option.Identity] = &option

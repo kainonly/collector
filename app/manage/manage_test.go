@@ -1,8 +1,8 @@
 package manage
 
 import (
-	"elastic-transfer/app/mq"
-	"elastic-transfer/app/types"
+	"elastic-collector/app/mq"
+	"elastic-collector/app/types"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
@@ -42,9 +42,7 @@ func TestElasticManager_Put(t *testing.T) {
 	err := manager.Put(types.PipeOption{
 		Identity: "task",
 		Index:    "task-log",
-		Validate: `{"type":"object","properties":{"name":{"type":"string"}}}`,
-		Topic:    "sys.schedule",
-		Key:      "",
+		Queue:    `schedule`,
 	})
 	if err != nil {
 		t.Error(err)

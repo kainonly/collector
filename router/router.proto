@@ -15,9 +15,6 @@ service Router {
 
   rpc Delete (DeleteParameter) returns (Response) {
   }
-
-  rpc Push (PushParameter) returns (Response) {
-  }
 }
 
 message NoParameter {
@@ -62,9 +59,4 @@ message AllResponse {
 
 message DeleteParameter {
   string identity = 1;
-}
-
-message PushParameter {
-  string identity = 1;
-  bytes data = 2;
 }
