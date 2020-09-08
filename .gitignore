@@ -23,5 +23,5 @@
 
 /config/config.yml
 /config/autoload
+/config/debug
 /go.sum
-/log

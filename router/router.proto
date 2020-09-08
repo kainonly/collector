@@ -1,0 +1,70 @@
+syntax = "proto3";
+package elastic.collector;
+service Router {
+  rpc Get (GetParameter) returns (GetResponse) {
+  }
+
+  rpc Lists (ListsParameter) returns (ListsResponse) {
+  }
+
+  rpc All (NoParameter) returns (AllResponse) {
+  }
+
+  rpc Put (Information) returns (Response) {
+  }
+
+  rpc Delete (DeleteParameter) returns (Response) {
+  }
+
+  rpc Push (PushParameter) returns (Response) {
+  }
+}
+
+message NoParameter {
+}
+
+message Response {
+  uint32 error = 1;
+  string msg = 2;
+}
+
+message Information {
+  string identity = 1;
+  string index = 2;
+  string queue = 3;
+}
+
+message GetParameter {
+  string identity = 1;
+}
+
+message GetResponse {
+  uint32 error = 1;
+  string msg = 2;
+  Information data = 3;
+}
+
+message ListsParameter {
+  repeated string identity = 1;
+}
+
+message ListsResponse {
+  uint32 error = 1;
+  string msg = 2;
+  repeated Information data = 3;
+}
+
+message AllResponse {
+  uint32 error = 1;
+  string msg = 2;
+  repeated string data = 3;
+}
+
+message DeleteParameter {
+  string identity = 1;
+}
+
+message PushParameter {
+  string identity = 1;
+  bytes data = 2;
+}

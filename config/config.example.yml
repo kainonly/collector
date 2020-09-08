@@ -1,0 +1,8 @@
+debug: true
+listen: 127.0.0.1:6000
+elastic:
+  addresses:
+    - http://localhost:9200
+mq:
+  drive: amqp
+  url:
