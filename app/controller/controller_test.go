@@ -52,19 +52,6 @@ func TestController_Put(t *testing.T) {
 	} else {
 		t.Log(response.Msg)
 	}
-	response, err = client.Put(context.Background(), &pb.Information{
-		Identity: "task-2",
-		Index:    "task-2",
-		Queue:    `proxy`,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if response.Error != 0 {
-		t.Error(response.Msg)
-	} else {
-		t.Log(response.Msg)
-	}
 }
 
 func TestController_All(t *testing.T) {
