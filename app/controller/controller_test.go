@@ -40,9 +40,22 @@ func TestMain(m *testing.M) {
 
 func TestController_Put(t *testing.T) {
 	response, err := client.Put(context.Background(), &pb.Information{
-		Identity: "task",
-		Index:    "task-log",
+		Identity: "task-1",
+		Index:    "task-1",
 		Queue:    `schedule`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Error != 0 {
+		t.Error(response.Msg)
+	} else {
+		t.Log(response.Msg)
+	}
+	response, err = client.Put(context.Background(), &pb.Information{
+		Identity: "task-2",
+		Index:    "task-2",
+		Queue:    `proxy`,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +81,7 @@ func TestController_All(t *testing.T) {
 
 func TestController_Get(t *testing.T) {
 	response, err := client.Get(context.Background(), &pb.GetParameter{
-		Identity: "task",
+		Identity: "task-1",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +95,7 @@ func TestController_Get(t *testing.T) {
 
 func TestController_Lists(t *testing.T) {
 	response, err := client.Lists(context.Background(), &pb.ListsParameter{
-		Identity: []string{"task"},
+		Identity: []string{"task-1"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +109,18 @@ func TestController_Lists(t *testing.T) {
 
 func TestController_Delete(t *testing.T) {
 	response, err := client.Delete(context.Background(), &pb.DeleteParameter{
-		Identity: "task",
+		Identity: "task-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Error != 0 {
+		t.Error(response.Msg)
+	} else {
+		t.Log(response.Msg)
+	}
+	response, err = client.Delete(context.Background(), &pb.DeleteParameter{
+		Identity: "task-2",
 	})
 	if err != nil {
 		t.Fatal(err)

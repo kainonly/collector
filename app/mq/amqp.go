@@ -115,6 +115,17 @@ func (c *AmqpDrive) CloseChannel(ID string) error {
 }
 
 func (c *AmqpDrive) SetConsume(option types.PipeOption) (err error) {
+	_, err = c.channel[option.Identity].QueueDeclare(
+		option.Queue,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return
+	}
 	msgs, err := c.channel[option.Identity].Consume(
 		option.Queue,
 		option.Identity,
@@ -124,16 +135,17 @@ func (c *AmqpDrive) SetConsume(option types.PipeOption) (err error) {
 		false,
 		nil,
 	)
+	if err != nil {
+		return
+	}
 	go func() {
 		for d := range msgs {
 			println(string(d.Body))
 			err = actions.Push(c.client, option.Index, d.Body)
 			if err != nil {
-				println(err.Error())
-				time.Sleep(time.Second * 15)
+				time.Sleep(time.Second * 30)
 				d.Nack(false, true)
 			} else {
-				println("ok")
 				d.Ack(false)
 			}
 		}
