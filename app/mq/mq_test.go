@@ -1,7 +1,8 @@
 package mq
 
 import (
-	"elastic-transfer/app/types"
+	"elastic-collector/app/schema"
+	"elastic-collector/app/types"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
@@ -26,16 +27,10 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalln("Service configuration file parsing failed", err)
 	}
-	mqlib, err = NewMessageQueue(config.Mq)
+	dataset := schema.New()
+	mqlib, err = NewMessageQueue(config.Mq, dataset)
 	if err != nil {
 		return
 	}
 	os.Exit(m.Run())
-}
-
-func TestMessageQueue_Push(t *testing.T) {
-	err := mqlib.Push("test", "", []byte(`{"name":"kain"}`))
-	if err != nil {
-		log.Fatalln(err)
-	}
 }

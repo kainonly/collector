@@ -1,8 +1,7 @@
 package schema
 
 import (
-	"elastic-transfer/app/types"
-	"encoding/json"
+	"elastic-collector/app/types"
 	"os"
 	"testing"
 )
@@ -16,34 +15,30 @@ func TestMain(m *testing.M) {
 }
 
 func TestSchema_Update(t *testing.T) {
-	var err error
-	var body1 interface{}
-	err = json.Unmarshal([]byte(`{"name":"task1"}`), &body1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var body2 interface{}
-	err = json.Unmarshal([]byte(`{"name":"task2"}`), &body2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = schema.Update(types.PipeOption{
+	err := schema.Update(types.PipeOption{
 		Identity: "task",
 		Index:    "task-log",
-		Validate: `{"type":"object","properties":{"name":{"type":"string"}}}`,
-		Topic:    "sys.schedule",
-		Key:      "",
+		Queue:    "schedule",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestSchema_Lists(t *testing.T) {
-	_, err := schema.Lists()
+func TestSchema_Get(t *testing.T) {
+	option, err := schema.Get("task")
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log(option)
+}
+
+func TestSchema_Lists(t *testing.T) {
+	options, err := schema.Lists()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(options)
 }
 
 func TestSchema_Delete(t *testing.T) {

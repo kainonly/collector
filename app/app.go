@@ -4,6 +4,7 @@ import (
 	"elastic-collector/app/controller"
 	"elastic-collector/app/manage"
 	"elastic-collector/app/mq"
+	"elastic-collector/app/schema"
 	"elastic-collector/app/types"
 	pb "elastic-collector/router"
 	"google.golang.org/grpc"
@@ -35,13 +36,15 @@ func (app *App) Start() (err error) {
 		return
 	}
 	server := grpc.NewServer()
-	mqlib, err := mq.NewMessageQueue(app.option.Mq)
+	dataset := schema.New()
+	mqlib, err := mq.NewMessageQueue(app.option.Mq, dataset)
 	if err != nil {
 		return
 	}
 	manager, err := manage.NewElasticManager(
 		app.option.Elastic,
 		mqlib,
+		dataset,
 	)
 	if err != nil {
 		return
