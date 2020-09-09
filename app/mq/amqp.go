@@ -140,7 +140,6 @@ func (c *AmqpDrive) SetConsume(option types.PipeOption) (err error) {
 	}
 	go func() {
 		for d := range msgs {
-			println(string(d.Body))
 			err = actions.Push(c.client, option.Index, d.Body)
 			if err != nil {
 				time.Sleep(time.Second * 30)
