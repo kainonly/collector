@@ -17,7 +17,7 @@ Example using docker compose
 ```yaml
 version: "3.8"
 services: 
-  subscriber:
+  collector:
     image: kainonly/elastic-collector
     restart: always
     volumes:
