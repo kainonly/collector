@@ -4,6 +4,7 @@ import (
 	"elastic-collector/app/actions"
 	"elastic-collector/app/schema"
 	"elastic-collector/app/types"
+	"elastic-collector/app/utils"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
@@ -16,9 +17,9 @@ type AmqpDrive struct {
 	schema          *schema.Schema
 	conn            *amqp.Connection
 	notifyConnClose chan *amqp.Error
-	channel         map[string]*amqp.Channel
-	channelDone     map[string]chan int
-	notifyChanClose map[string]chan *amqp.Error
+	channel         *utils.SyncChannel
+	channelDone     *utils.SyncChannelDone
+	notifyChanClose *utils.SyncNotifyChanClose
 }
 
 func NewAmqpDrive(url string, client *elasticsearch.Client, schema *schema.Schema) (session *AmqpDrive, err error) {
@@ -34,9 +35,9 @@ func NewAmqpDrive(url string, client *elasticsearch.Client, schema *schema.Schem
 	session.notifyConnClose = make(chan *amqp.Error)
 	conn.NotifyClose(session.notifyConnClose)
 	go session.listenConn()
-	session.channel = make(map[string]*amqp.Channel)
-	session.channelDone = make(map[string]chan int)
-	session.notifyChanClose = make(map[string]chan *amqp.Error)
+	session.channel = utils.NewSyncChannel()
+	session.channelDone = utils.NewSyncChannelDone()
+	session.notifyChanClose = utils.NewSyncNotifyChanClose()
 	return
 }
 
@@ -63,29 +64,33 @@ func (c *AmqpDrive) reconnected() {
 		c.notifyConnClose = make(chan *amqp.Error)
 		conn.NotifyClose(c.notifyConnClose)
 		go c.listenConn()
+		// TODO:处理掉线自动恢复
 		logrus.Info("Attempt to reconnect successfully")
 		break
 	}
 }
 
 func (c *AmqpDrive) SetChannel(ID string) (err error) {
-	c.channel[ID], err = c.conn.Channel()
+	var channel *amqp.Channel
+	channel, err = c.conn.Channel()
 	if err != nil {
 		return
 	}
-	c.channelDone[ID] = make(chan int)
-	c.notifyChanClose[ID] = make(chan *amqp.Error)
-	c.channel[ID].NotifyClose(c.notifyChanClose[ID])
+	c.channel.Set(ID, channel)
+	c.channelDone.Set(ID, make(chan int))
+	notifyChanClose := make(chan *amqp.Error)
+	channel.NotifyClose(notifyChanClose)
+	c.notifyChanClose.Set(ID, notifyChanClose)
 	go c.listenChannel(ID)
 	return
 }
 
 func (c *AmqpDrive) listenChannel(ID string) {
 	select {
-	case <-c.notifyChanClose[ID]:
+	case <-c.notifyChanClose.Get(ID):
 		logrus.Error("Channel connection is disconnected:", ID)
 		c.refreshChannel(ID)
-	case <-c.channelDone[ID]:
+	case <-c.channelDone.Get(ID):
 		break
 	}
 }
@@ -110,12 +115,12 @@ func (c *AmqpDrive) refreshChannel(ID string) {
 }
 
 func (c *AmqpDrive) CloseChannel(ID string) error {
-	c.channelDone[ID] <- 1
-	return c.channel[ID].Close()
+	c.channelDone.Get(ID) <- 1
+	return c.channel.Get(ID).Close()
 }
 
 func (c *AmqpDrive) SetConsume(option types.PipeOption) (err error) {
-	_, err = c.channel[option.Identity].QueueDeclare(
+	_, err = c.channel.Get(option.Identity).QueueDeclare(
 		option.Queue,
 		true,
 		false,
@@ -126,7 +131,7 @@ func (c *AmqpDrive) SetConsume(option types.PipeOption) (err error) {
 	if err != nil {
 		return
 	}
-	msgs, err := c.channel[option.Identity].Consume(
+	msgs, err := c.channel.Get(option.Identity).Consume(
 		option.Queue,
 		option.Identity,
 		false,
