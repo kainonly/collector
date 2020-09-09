@@ -8,7 +8,7 @@ Provides to collect data from the queue and write it to elasticsearch
 [![Docker Pulls](https://img.shields.io/docker/pulls/kainonly/elastic-collector.svg?style=flat-square)](https://hub.docker.com/r/kainonly/elastic-collector)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/codexset/elastic-collector/master/LICENSE)
 
-![guide](guide.svg)
+![guide](https://cdn.kainonly.com/resource/elastic-collector.svg)
 
 ## Setup
 
