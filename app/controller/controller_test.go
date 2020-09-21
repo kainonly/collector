@@ -40,9 +40,48 @@ func TestMain(m *testing.M) {
 
 func TestController_Put(t *testing.T) {
 	response, err := client.Put(context.Background(), &pb.Information{
-		Identity: "task-1",
-		Index:    "task-1",
+		Identity: "schedule",
+		Index:    "schedule-logs",
 		Queue:    `schedule`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Error != 0 {
+		t.Error(response.Msg)
+	} else {
+		t.Log(response.Msg)
+	}
+	response, err = client.Put(context.Background(), &pb.Information{
+		Identity: "mq-subscriber",
+		Index:    "mq-subscriber-logs",
+		Queue:    `subscriber`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Error != 0 {
+		t.Error(response.Msg)
+	} else {
+		t.Log(response.Msg)
+	}
+	response, err = client.Put(context.Background(), &pb.Information{
+		Identity: "mq-publish",
+		Index:    "mq-publish-logs",
+		Queue:    `publish`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Error != 0 {
+		t.Error(response.Msg)
+	} else {
+		t.Log(response.Msg)
+	}
+	response, err = client.Put(context.Background(), &pb.Information{
+		Identity: "mq-message",
+		Index:    "mq-message-logs",
+		Queue:    `message`,
 	})
 	if err != nil {
 		t.Fatal(err)
