@@ -16,9 +16,9 @@ import (
 
 func Application(option *types.Config) (err error) {
 	// Turn on debugging
-	if option.Debug {
+	if option.Debug != "" {
 		go func() {
-			http.ListenAndServe(":6060", nil)
+			http.ListenAndServe(option.Debug, nil)
 		}()
 	}
 	// Start microservice
