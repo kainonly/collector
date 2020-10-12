@@ -2,11 +2,11 @@
 
 Provides to collect data from the queue and write it to elasticsearch
 
-[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/codexset/elastic-collector?style=flat-square)](https://github.com/codexset/elastic-collector)
-[![Github Actions](https://img.shields.io/github/workflow/status/codexset/elastic-collector/release?style=flat-square)](https://github.com/codexset/elastic-collector/actions)
+[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/kainonly/elastic-collector?style=flat-square)](https://github.com/kainonly/elastic-collector)
+[![Github Actions](https://img.shields.io/github/workflow/status/kainonly/elastic-collector/release?style=flat-square)](https://github.com/kainonly/elastic-collector/actions)
 [![Image Size](https://img.shields.io/docker/image-size/kainonly/elastic-collector?style=flat-square)](https://hub.docker.com/r/kainonly/elastic-collector)
 [![Docker Pulls](https://img.shields.io/docker/pulls/kainonly/elastic-collector.svg?style=flat-square)](https://hub.docker.com/r/kainonly/elastic-collector)
-[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/codexset/elastic-collector/master/LICENSE)
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/kainonly/elastic-collector/master/LICENSE)
 
 ![guide](https://cdn.kainonly.com/resource/elastic-collector.svg)
 
