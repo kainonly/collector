@@ -458,9 +458,9 @@ func RegisterAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 var (
 	pattern_API_Get_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"collector"}, ""))
 
-	pattern_API_Lists_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"collector"}, ""))
+	pattern_API_Lists_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"collectors"}, ""))
 
-	pattern_API_All_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"collector"}, ""))
+	pattern_API_All_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"collectors"}, ""))
 
 	pattern_API_Put_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"collector"}, ""))
 

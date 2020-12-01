@@ -1,0 +1,59 @@
+name: release
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  release:
+    types: [ published ]
+
+jobs:
+  default:
+    name: Application
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ^1.15
+
+      - uses: actions/checkout@v2
+
+      - name: Build Application
+        run: go build -tags=jsoniter -o dist/elastic-collector main.go
+        env:
+          CGO_ENABLED: 0
+          GO111MODULE: on
+          GOARCH: amd64
+          GOOS: linux
+
+      - uses: crazy-max/ghaction-docker-meta@v1
+        id: meta
+        with:
+          images: kainonly/elastic-collector
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build And Push to Docker Hub
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+      - name: Docker Hub Description
+        uses: peter-evans/dockerhub-description@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          repository: kainonly/elastic-collector

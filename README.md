@@ -2,13 +2,11 @@
 
 Provides to collect data from the queue and write it to elasticsearch
 
-[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/kainonly/elastic-collector?style=flat-square)](https://github.com/kainonly/elastic-collector)
-[![Github Actions](https://img.shields.io/github/workflow/status/kainonly/elastic-collector/release?style=flat-square)](https://github.com/kainonly/elastic-collector/actions)
+[![Github Actions](https://img.shields.io/github/workflow/status/kain-lab/elastic-collector/release?style=flat-square)](https://github.com/kain-lab/elastic-collector/actions)
+[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/kain-lab/elastic-collector?style=flat-square)](https://github.com/kain-lab/elastic-collector)
 [![Image Size](https://img.shields.io/docker/image-size/kainonly/elastic-collector?style=flat-square)](https://hub.docker.com/r/kainonly/elastic-collector)
 [![Docker Pulls](https://img.shields.io/docker/pulls/kainonly/elastic-collector.svg?style=flat-square)](https://hub.docker.com/r/kainonly/elastic-collector)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/kainonly/elastic-collector/master/LICENSE)
-
-![guide](https://cdn.kainonly.com/resource/elastic-collector.svg)
 
 ## Setup
 
@@ -24,6 +22,7 @@ services:
       - ./collector/config:/app/config
     ports:
       - 6000:6000
+      - 8080:8080
 ```
 
 ## Configuration
@@ -31,172 +30,224 @@ services:
 For configuration, please refer to `config/config.example.yml`
 
 - **debug** `string` Start debugging, ie `net/http/pprof`, access address is`http://localhost:6060`
-- **listen** `string` Microservice listening address
+- **listen** `string` grpc server listening address
+- **gateway** `string` API gateway server listening address
 - **elastic** `object` Elasticsearch configuration
     - **addresses** `array` hosts
     - **username** `string`
     - **password** `string`
     - **cloud_id** `string` cloud id
     - **api_key** `string` api key
-- **mq** `object`
+- **queue** `object`
     - **drive** `string` Contains: `amqp`
-    - **url** `string` E.g `amqp://guest:guest@localhost:5672/`
+    - **option** `object` (amqp) 
+        - **url** `string` E.g `amqp://guest:guest@localhost:5672/`
 
 ## Service
 
-The service is based on gRPC and you can view `router/router.proto`
+The service is based on gRPC to view `api/api.proto`
 
 ```proto
 syntax = "proto3";
 package elastic.collector;
-service Router {
-  rpc Get (GetParameter) returns (GetResponse) {
-  }
+option go_package = "elastic-collector/gen/go/elastic/collector";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
 
-  rpc Lists (ListsParameter) returns (ListsResponse) {
+service API {
+  rpc Get (ID) returns (Data) {
+    option (google.api.http) = {
+      get: "/collector",
+    };
   }
-
-  rpc All (NoParameter) returns (AllResponse) {
+  rpc Lists (IDs) returns (DataLists) {
+    option (google.api.http) = {
+      post: "/collectors",
+      body: "*"
+    };
   }
-
-  rpc Put (Information) returns (Response) {
+  rpc All (google.protobuf.Empty) returns (IDs) {
+    option (google.api.http) = {
+      get: "/collectors",
+    };
   }
-
-  rpc Delete (DeleteParameter) returns (Response) {
+  rpc Put (Data) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/collector",
+      body: "*",
+    };
+  }
+  rpc Delete (ID) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/collector",
+    };
   }
 }
 
-message NoParameter {
-}
-
-message Response {
-  uint32 error = 1;
-  string msg = 2;
-}
-
-message Information {
-  string identity = 1;
+message Data {
+  string id = 1;
   string index = 2;
   string queue = 3;
 }
 
-message GetParameter {
-  string identity = 1;
+message ID {
+  string id = 1;
 }
 
-message GetResponse {
-  uint32 error = 1;
-  string msg = 2;
-  Information data = 3;
+message IDs {
+  repeated string ids = 1;
 }
 
-message ListsParameter {
-  repeated string identity = 1;
-}
-
-message ListsResponse {
-  uint32 error = 1;
-  string msg = 2;
-  repeated Information data = 3;
-}
-
-message AllResponse {
-  uint32 error = 1;
-  string msg = 2;
-  repeated string data = 3;
-}
-
-message DeleteParameter {
-  string identity = 1;
+message DataLists {
+  repeated Data data = 1;
 }
 ```
 
-#### rpc Get (GetParameter) returns (GetResponse) {}
+## Get (ID) returns (Data)
 
 Get collector configuration
 
-- GetParameter
-  - **identity** `string` collector id
-- GetResponse
-  - **error** `uint32` error code, `0` is normal
-  - **msg** `string` error feedback
-  - **data** `Information` result
-    - **identity** `string` collector id
-    - **index** `string` elasticsearch index
-    - **queue** `string` Queue name of the message queue
+### RPC
+
+- **ID**
+  - **id** `string` collector id
+- **Data**
+  - **id** `string` collector id
+  - **index** `string` elasticsearch index
+  - **queue** `string` Queue name of the message queue
 
 
 ```golang
 client := pb.NewRouterClient(conn)
-response, err := client.Get(context.Background(), &pb.GetParameter{
-  Identity: "task",
+response, err := client.Get(context.Background(), &pb.ID{
+  Id: "debug",
 })
 ```
 
-#### rpc Lists (ListsParameter) returns (ListsResponse) {}
+### API Gateway
+
+- **GET** `/collector`
+
+```http
+GET /collector?id=debug HTTP/1.1
+Host: localhost:8080
+```
+
+## Lists (IDs) returns (DataLists)
 
 Lists collector configuration
 
-- ListsParameter
-  - **identity** `string` collector id
-- ListsResponse
-  - **error** `uint32` error code, `0` is normal
-  - **msg** `string` error feedback
-  - **data** `[]Information` result
+### RPC
+
+- **IDs**
+  - **ids** `[]string` collector id
+- **DataLists**
+  - **data** `[]Data` result
     - **identity** `string` collector id
     - **index** `string` elasticsearch index
     - **queue** `string` Queue name of the message queue
 
 ```golang
 client := pb.NewRouterClient(conn)
-response, err := client.Lists(context.Background(), &pb.ListsParameter{
-    Identity: []string{"task-1"},
+response, err := client.Lists(context.Background(), &pb.IDs{
+  Ids: []string{"debug"},
 })
 ```
 
-#### rpc All (NoParameter) returns (AllResponse) {}
+### API Gateway
 
-- NoParameter
-- AllResponse
-  - **error** `uint32` error code, `0` is normal
-  - **msg** `string` error feedback
-  - **data** `[]string` collector IDs
+- **POST** `/collectors`
+
+```http
+POST /collectors HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{
+    "ids":["debug"]
+}
+```
+
+## All (google.protobuf.Empty) returns (IDs)
+
+Get all collector configuration identifiers
+
+### RPC
+
+- **IDs**
+  - **ids** `[]string` collector id
 
 ```golang
 client := pb.NewRouterClient(conn)
-response, err := client.All(context.Background(), &pb.NoParameter{})
+response, err := client.All(context.Background(), &empty.Empty{})
 ```
 
-#### rpc Put (Information) returns (Response) {}
+### API Gateway
 
-- Information
-  - **identity** `string` collector id
+- **GET** `/collectors`
+
+```http
+GET /collectors HTTP/1.1
+Host: localhost:8080
+```
+
+## Put (Data) returns (google.protobuf.Empty)
+
+Put collector configuration
+
+### RPC
+
+- **Data**
+  - **id** `string` collector id
   - **index** `string` elasticsearch index
   - **queue** `string` Queue name of the message queue
-- Response
-  - **error** `uint32` error code, `0` is normal
-  - **msg** `string` error feedback
 
 ```golang
 client := pb.NewRouterClient(conn)
-response, err := client.Put(context.Background(), &pb.Information{
-    Identity: "task-1",
-    Index:    "task-1",
-    Queue:    `schedule`,
+response, err := client.Put(context.Background(), &pb.Data{
+  Id:    "debug",
+  Index: "debug-logs-alpha",
+  Queue: "debug",
 })
 ```
 
-#### rpc Delete (DeleteParameter) returns (Response) {}
+### API Gateway
 
-- DeleteParameter
-  - **identity** `string` collector id
-- Response
-  - **error** `uint32` error code, `0` is normal
-  - **msg** `string` error feedback
+- **PUT** `/collector`
+
+```http
+PUT /collector HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{
+    "id": "debug",
+    "index": "debug-logs-alpha",
+    "queue": "debug"
+}
+```
+
+## Delete (ID) returns (google.protobuf.Empty) {}
+
+Remove collector configuration
+
+### RPC
+
+- **ID**
+  - **id** `string` collector id
 
 ```golang
 client := pb.NewRouterClient(conn)
-response, err := client.Delete(context.Background(), &pb.DeleteParameter{
-  Identity: "task-1",
+response, err := client.Delete(context.Background(), &pb.ID{
+  Id: "debug",
 })
+```
+
+### API Gateway
+
+- **DELETE** `/collector`
+
+```http
+DELETE /collector?id=debug HTTP/1.1
+Host: localhost:8080
 ```

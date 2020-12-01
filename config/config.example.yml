@@ -1,8 +1,11 @@
 debug: :6060
 listen: 127.0.0.1:6000
+gateway: 127.0.0.1:8080
 elastic:
   addresses:
     - http://localhost:9200
-mq:
+queue:
   drive: amqp
-  url:
+  option:
+    url: amqp://guest@guest@localhost/%2Falpha
+

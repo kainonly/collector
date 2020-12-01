@@ -12,13 +12,13 @@ service API {
   }
   rpc Lists (IDs) returns (DataLists) {
     option (google.api.http) = {
-      post: "/collector",
+      post: "/collectors",
       body: "*"
     };
   }
   rpc All (google.protobuf.Empty) returns (IDs) {
     option (google.api.http) = {
-      get: "/collector",
+      get: "/collectors",
     };
   }
   rpc Put (Data) returns (google.protobuf.Empty) {
