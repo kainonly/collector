@@ -118,7 +118,7 @@ Get collector configuration
 
 
 ```golang
-client := pb.NewRouterClient(conn)
+client := pb.NewAPIClient(conn)
 response, err := client.Get(context.Background(), &pb.ID{
   Id: "debug",
 })
@@ -148,7 +148,7 @@ Lists collector configuration
     - **queue** `string` Queue name of the message queue
 
 ```golang
-client := pb.NewRouterClient(conn)
+client := pb.NewAPIClient(conn)
 response, err := client.Lists(context.Background(), &pb.IDs{
   Ids: []string{"debug"},
 })
@@ -178,7 +178,7 @@ Get all collector configuration identifiers
   - **ids** `[]string` collector id
 
 ```golang
-client := pb.NewRouterClient(conn)
+client := pb.NewAPIClient(conn)
 response, err := client.All(context.Background(), &empty.Empty{})
 ```
 
@@ -203,7 +203,7 @@ Put collector configuration
   - **queue** `string` Queue name of the message queue
 
 ```golang
-client := pb.NewRouterClient(conn)
+client := pb.NewAPIClient(conn)
 response, err := client.Put(context.Background(), &pb.Data{
   Id:    "debug",
   Index: "debug-logs-alpha",
@@ -237,7 +237,7 @@ Remove collector configuration
   - **id** `string` collector id
 
 ```golang
-client := pb.NewRouterClient(conn)
+client := pb.NewAPIClient(conn)
 response, err := client.Delete(context.Background(), &pb.ID{
   Id: "debug",
 })
