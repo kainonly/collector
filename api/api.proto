@@ -1,0 +1,53 @@
+syntax = "proto3";
+package elastic.collector;
+option go_package = "elastic-collector/gen/go/elastic/collector";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+
+service API {
+  rpc Get (ID) returns (Data) {
+    option (google.api.http) = {
+      get: "/collector",
+    };
+  }
+  rpc Lists (IDs) returns (DataLists) {
+    option (google.api.http) = {
+      post: "/collector",
+      body: "*"
+    };
+  }
+  rpc All (google.protobuf.Empty) returns (IDs) {
+    option (google.api.http) = {
+      get: "/collector",
+    };
+  }
+  rpc Put (Data) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/collector",
+      body: "*",
+    };
+  }
+  rpc Delete (ID) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/collector",
+    };
+  }
+}
+
+message Data {
+  string id = 1;
+  string index = 2;
+  string queue = 3;
+}
+
+message ID {
+  string id = 1;
+}
+
+message IDs {
+  repeated string ids = 1;
+}
+
+message DataLists {
+  repeated Data data = 1;
+}
