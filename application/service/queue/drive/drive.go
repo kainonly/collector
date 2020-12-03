@@ -4,7 +4,12 @@ import (
 	"elastic-collector/application/service/elastic"
 	"elastic-collector/application/service/schema"
 	"elastic-collector/config/options"
+	"errors"
 	"go.uber.org/fx"
+)
+
+var (
+	QueueNotExists = errors.New("available queue does not exist")
 )
 
 type Dependency struct {

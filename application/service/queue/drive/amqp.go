@@ -125,8 +125,12 @@ func (c *AMQPDrive) closeChannel(identity string) error {
 }
 
 func (c *AMQPDrive) setConsume(option options.PipeOption) (err error) {
+	channel := c.channel.Get(option.Identity)
+	if _, err = channel.QueueInspect(option.Queue); err != nil {
+		return QueueNotExists
+	}
 	var msgs <-chan amqp.Delivery
-	if msgs, err = c.channel.Get(option.Identity).Consume(
+	if msgs, err = channel.Consume(
 		option.Queue,
 		option.Identity,
 		false,
