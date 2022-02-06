@@ -20,8 +20,3 @@
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-
-/config/config.yml
-/config/autoload
-/config/debug
-/go.sum
