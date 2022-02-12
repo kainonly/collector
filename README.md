@@ -1,4 +1,4 @@
-# Log Collector
+# Collector
 
 日志收集器
 
