@@ -1,6 +1,6 @@
-# Collector
+# Weplanx Collector
 
-日志收集器
+日志收集器，接收数据流并写入日志系统
 
-> 项目继承于 [elastic-collector](https://github.com/weplanx/log-collector/tree/elastic-collector) 延续开发
-> 新版本将以 `v*.*.*` 形式发布
+> 版本 `*.*.*` 为 [elastic-collector](https://github.com/weplanx/log-collector/tree/elastic-collector) 已归档的分支项目
+> ，请使用 `v*.*.*` 发布的版本

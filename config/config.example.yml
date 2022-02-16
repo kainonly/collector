@@ -1,0 +1,4 @@
+namespace: <命名空间>
+nats:
+  hosts: [ ]
+  nkey:
