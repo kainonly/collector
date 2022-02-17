@@ -4,6 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/weplanx/collector?style=flat-square)](https://goreportcard.com/report/github.com/weplanx/collector)
 [![Release](https://img.shields.io/github/v/release/weplanx/collector.svg?style=flat-square)](https://github.com/weplanx/collector)
 [![GitHub license](https://img.shields.io/github/license/weplanx/collector?style=flat-square)](https://raw.githubusercontent.com/weplanx/collector/main/LICENSE)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fweplanx%2Fcollector.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fweplanx%2Fcollector?ref=badge_shield)
 
 日志收集器，接收数据流并写入日志系统
 
@@ -93,3 +94,5 @@ spec:
 ## License
 
 [BSD-3-Clause License](https://github.com/weplanx/collector/blob/main/LICENSE)
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fweplanx%2Fcollector.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fweplanx%2Fcollector?ref=badge_large)
