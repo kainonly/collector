@@ -6,9 +6,6 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/common"
 	"go.uber.org/zap"
-	"log"
-	"strings"
-	"time"
 )
 
 type App struct {
@@ -18,11 +15,15 @@ type App struct {
 	event *nats.Subscription
 }
 
+func (x *App) subject(topic string) string {
+	return fmt.Sprintf(`logs.%s.%s`, x.Values.Namespace, topic)
+}
+
 // Run 启动服务
 func (x *App) Run() (err error) {
 	namesapce := x.Values.Namespace
 	// 初始化日志主题
-	readySubject := fmt.Sprintf(`namespaces.%s.ready`, namesapce)
+	readySubject := fmt.Sprintf(`logs.%s.ready`, namesapce)
 	if _, err = x.Js.Subscribe(readySubject, func(msg *nats.Msg) {
 		defer msg.Sub.Unsubscribe()
 		var topics []string
@@ -31,24 +32,25 @@ func (x *App) Run() (err error) {
 				zap.ByteString("data", msg.Data),
 				zap.Error(err),
 			)
+			return
 		}
 		for _, v := range topics {
 			if err = x.SetSubscribe(v); err != nil {
 				x.Log.Error("订阅设置失败",
-					zap.String("topic", v),
+					zap.String("subject", x.subject(v)),
 					zap.Error(err),
 				)
 			}
 		}
-		x.Log.Info("初始化订阅",
-			zap.String("topics", strings.Join(topics, ",")),
+		x.Log.Info("完成初始化订阅",
+			zap.Any("topics", topics),
 		)
 	}); err != nil {
 		return
 	}
 
 	// 订阅事件状态
-	eventSubject := fmt.Sprintf(`namespaces.%s.event`, namesapce)
+	eventSubject := fmt.Sprintf(`logs.%s.event`, namesapce)
 	if x.event, err = x.Js.Subscribe(eventSubject, func(msg *nats.Msg) {
 		var event map[string]string
 		if err = msgpack.Unmarshal(msg.Data, &event); err != nil {
@@ -56,6 +58,7 @@ func (x *App) Run() (err error) {
 				zap.ByteString("data", msg.Data),
 				zap.Error(err),
 			)
+			return
 		}
 		topic := event["topic"]
 		x.Log.Info("事件",
@@ -64,15 +67,18 @@ func (x *App) Run() (err error) {
 		)
 		switch event["action"] {
 		case "create":
-			x.SetSubscribe(topic)
-			break
-		case "update":
-			x.Remove(topic)
-			time.Sleep(500 * time.Millisecond)
-			x.SetSubscribe(topic)
+			if err := x.SetSubscribe(topic); err != nil {
+				x.Log.Error("订阅设置失败",
+					zap.String("subject", x.subject(topic)),
+				)
+			}
 			break
 		case "delete":
-			x.Remove(topic)
+			if err := x.RemoveSubscribe(topic); err != nil {
+				x.Log.Error("订阅移除失败",
+					zap.String("subject", x.subject(topic)),
+				)
+			}
 			break
 		}
 
@@ -82,45 +88,55 @@ func (x *App) Run() (err error) {
 	return
 }
 
-// Destory 销毁
-func (x *App) Destory() (err error) {
-	return x.Nats.Drain()
-}
-
 // SetSubscribe 订阅设置
 func (x *App) SetSubscribe(topic string) (err error) {
-	subject := fmt.Sprintf(`%s.%s`, x.Values.Namespace, topic)
 	var sub *nats.Subscription
-	if sub, err = x.Js.Subscribe(subject, func(msg *nats.Msg) {
+	if sub, err = x.Js.Subscribe(x.subject(topic), func(msg *nats.Msg) {
 		var data map[string]interface{}
 		if err := msgpack.Unmarshal(msg.Data, &data); err != nil {
 			x.Log.Error("解码失败",
-				zap.String("topic", msg.Subject),
+				zap.String("subject", msg.Subject),
 				zap.ByteString("data", msg.Data),
 				zap.Error(err),
 			)
 			return
 		}
-		log.Println("topic", subject, "data", data)
+		x.Log.Info("解码成功",
+			zap.String("subject", x.subject(topic)),
+			zap.Any("data", data),
+		)
 		msg.Ack()
-	}, nats.ManualAck()); err != nil {
+	}, nats.ManualAck(), nats.Durable("COLLECTOR")); err != nil {
 		return
 	}
 	x.Set(topic, sub)
 	x.Log.Info("订阅设置成功",
-		zap.String("topic", subject),
+		zap.String("subject", x.subject(topic)),
 	)
+	return
+}
+
+func (x *App) Destory() (err error) {
+	x.Log.Info("正在销毁...")
+	for _, v := range x.Value() {
+		if err = v.Drain(); err != nil {
+			return
+		}
+	}
+	if err = x.Nats.Drain(); err != nil {
+		return
+	}
 	return
 }
 
 // RemoveSubscribe 订阅移除
 func (x *App) RemoveSubscribe(topic string) (err error) {
-	if err = x.Get(topic).Unsubscribe(); err != nil {
+	if err = x.Get(topic).Drain(); err != nil {
 		return
 	}
 	x.Remove(topic)
 	x.Log.Info("订阅移除成功",
-		zap.String("topic", fmt.Sprintf(`%s.%s`, x.Values.Namespace, topic)),
+		zap.String("subject", x.subject(topic)),
 	)
 	return
 }
