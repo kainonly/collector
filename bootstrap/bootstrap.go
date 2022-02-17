@@ -6,6 +6,7 @@ import (
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
+	cls "github.com/tencentcloud/tencentcloud-cls-sdk-go"
 	"github.com/weplanx/collector/common"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
@@ -19,6 +20,7 @@ var Provides = wire.NewSet(
 	UseZap,
 	UseNats,
 	UseJetStream,
+	UseCLS,
 )
 
 // SetValues 初始化配置
@@ -76,4 +78,12 @@ func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 
 func UseJetStream(nc *nats.Conn) (nats.JetStreamContext, error) {
 	return nc.JetStream(nats.PublishAsyncMaxPending(256))
+}
+
+func UseCLS(values *common.Values) (*cls.AsyncProducerClient, error) {
+	producerConfig := cls.GetDefaultAsyncProducerClientConfig()
+	producerConfig.Endpoint = values.CLS.Endpoint
+	producerConfig.AccessKeyID = values.CLS.SecretId
+	producerConfig.AccessKeySecret = values.CLS.SecretKey
+	return cls.NewAsyncProducerClient(producerConfig)
 }

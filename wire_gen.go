@@ -27,11 +27,16 @@ func App(value *common.Values) (*app.App, error) {
 	if err != nil {
 		return nil, err
 	}
+	asyncProducerClient, err := bootstrap.UseCLS(value)
+	if err != nil {
+		return nil, err
+	}
 	inject := &common.Inject{
 		Values: value,
 		Log:    logger,
 		Nats:   conn,
 		Js:     jetStreamContext,
+		CLS:    asyncProducerClient,
 	}
 	appApp := app.New(inject)
 	return appApp, nil

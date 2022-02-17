@@ -2,3 +2,8 @@ namespace: <命名空间>
 nats:
   hosts: [ ]
   nkey:
+cls:
+  secret_id:
+  secret_key:
+  endpoint: ap-guangzhou.cls.tencentcs.com
+  topic_id: <日志主题ID>

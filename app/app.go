@@ -2,10 +2,14 @@ package app
 
 import (
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/nats-io/nats.go"
+	cls "github.com/tencentcloud/tencentcloud-cls-sdk-go"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/common"
 	"go.uber.org/zap"
+	"strconv"
+	"time"
 )
 
 type App struct {
@@ -85,6 +89,9 @@ func (x *App) Run() (err error) {
 	}); err != nil {
 		return
 	}
+
+	// 启动 CLS
+	x.CLS.Start()
 	return
 }
 
@@ -92,8 +99,8 @@ func (x *App) Run() (err error) {
 func (x *App) SetSubscribe(topic string) (err error) {
 	var sub *nats.Subscription
 	if sub, err = x.Js.Subscribe(x.subject(topic), func(msg *nats.Msg) {
-		var data map[string]interface{}
-		if err := msgpack.Unmarshal(msg.Data, &data); err != nil {
+		var values map[string]interface{}
+		if err := msgpack.Unmarshal(msg.Data, &values); err != nil {
 			x.Log.Error("解码失败",
 				zap.String("subject", msg.Subject),
 				zap.ByteString("data", msg.Data),
@@ -101,11 +108,48 @@ func (x *App) SetSubscribe(topic string) (err error) {
 			)
 			return
 		}
-		x.Log.Info("解码成功",
+		data := make(map[string]string, len(values))
+		for key, value := range values {
+			switch v := value.(type) {
+			case string:
+				data[key] = v
+				break
+			case int64:
+				data[key] = strconv.FormatInt(v, 10)
+				break
+			case float64:
+				data[key] = fmt.Sprintf("%f", v)
+				break
+			default:
+				json, err := jsoniter.Marshal(value)
+				if err != nil {
+					x.Log.Error("编码失败",
+						zap.String("key", key),
+						zap.Any("value", value),
+						zap.Error(err),
+					)
+					return
+				}
+				data[key] = string(json)
+			}
+		}
+
+		x.Log.Debug("解码成功",
 			zap.String("subject", x.subject(topic)),
 			zap.Any("data", data),
 		)
-		msg.Ack()
+		clog := cls.NewCLSLog(
+			time.Now().Unix(),
+			data,
+		)
+		reply := &common.CLSReply{Inject: x.Inject, Msg: msg}
+		if err = x.CLS.SendLog(x.Values.CLS.TopicId, clog, reply); err != nil {
+			x.Log.Error("日志写入失败",
+				zap.Any("data", data),
+				zap.Error(err),
+			)
+			return
+		}
 	}, nats.ManualAck(), nats.Durable("COLLECTOR")); err != nil {
 		return
 	}
@@ -118,6 +162,7 @@ func (x *App) SetSubscribe(topic string) (err error) {
 
 func (x *App) Destory() (err error) {
 	x.Log.Info("正在销毁...")
+	x.CLS.Close(0)
 	for _, v := range x.Value() {
 		if err = v.Drain(); err != nil {
 			return

@@ -5,9 +5,11 @@ go 1.15
 require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/wire v0.5.0
+	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/nats-io/nats-server/v2 v2.7.2 // indirect
 	github.com/nats-io/nats.go v1.13.1-0.20220121202836-972a071d373d
 	github.com/nats-io/nkeys v0.3.0
+	github.com/tencentcloud/tencentcloud-cls-sdk-go v0.0.0-20220107074144-c92bd2517aab // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
