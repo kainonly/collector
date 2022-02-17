@@ -4,14 +4,18 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/weplanx/collector?style=flat-square)](https://goreportcard.com/report/github.com/weplanx/collector)
 [![Release](https://img.shields.io/github/v/release/weplanx/collector.svg?style=flat-square)](https://github.com/weplanx/collector)
 [![GitHub license](https://img.shields.io/github/license/weplanx/collector?style=flat-square)](https://raw.githubusercontent.com/weplanx/collector/main/LICENSE)
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fweplanx%2Fcollector.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fweplanx%2Fcollector?ref=badge_shield)
 
 日志收集器，接收数据流并写入日志系统
 
 > 版本 `*.*.*` 为 [elastic-collector](https://github.com/weplanx/log-collector/tree/elastic-collector) 已归档的分支项目
-> ，请使用 `v*.*.*` 发布的版本
+> ，请使用 `v*.*.*` 发布的版本（预发布用于构建测试）
 
 ## 部署服务
+
+日志收集器在 NATS JetStream 基础上订阅过滤 [Transfer](https://github.com/weplanx/transfer) 服务相同的命名空间，自动进行配置调度、
+消费数据默认写入腾讯云 CLS 日志系统，通过 CLS 可进行更多自定义，例如：投递至 COS，将存储智能分层以此替代永久存储
+
+![Collector](./topology.png)
 
 镜像源主要有：
 
