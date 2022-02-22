@@ -89,7 +89,7 @@ spec:
     spec:
       containers:
         - image: ccr.ccs.tencentyun.com/weplanx/collector:${tag}
-          name: api
+          name: collector
 ```
 
 例如：在 Github Actions
