@@ -20,14 +20,18 @@ type App struct {
 }
 
 func (x *App) subject(topic string) string {
-	return fmt.Sprintf(`logs.%s.%s`, x.Values.Namespace, topic)
+	return fmt.Sprintf(`%s.logs.%s`, x.Values.Namespace, topic)
+}
+
+func (x *App) queue(topic string) string {
+	return fmt.Sprintf(`%s:logs:%s`, x.Values.Namespace, topic)
 }
 
 // Run 启动服务
 func (x *App) Run() (err error) {
 	namesapce := x.Values.Namespace
 	// 初始化日志主题
-	readySubject := fmt.Sprintf(`logs.%s.ready`, namesapce)
+	readySubject := fmt.Sprintf(`%s.logs`, namesapce)
 	if _, err = x.Js.Subscribe(readySubject, func(msg *nats.Msg) {
 		defer msg.Sub.Unsubscribe()
 		var topics []string
@@ -54,7 +58,7 @@ func (x *App) Run() (err error) {
 	}
 
 	// 订阅事件状态
-	eventSubject := fmt.Sprintf(`logs.%s.event`, namesapce)
+	eventSubject := fmt.Sprintf(`%s.logs.events`, namesapce)
 	if x.event, err = x.Js.Subscribe(eventSubject, func(msg *nats.Msg) {
 		var event map[string]string
 		if err = msgpack.Unmarshal(msg.Data, &event); err != nil {
@@ -98,7 +102,7 @@ func (x *App) Run() (err error) {
 // SetSubscribe 订阅设置
 func (x *App) SetSubscribe(topic string) (err error) {
 	var sub *nats.Subscription
-	if sub, err = x.Js.Subscribe(x.subject(topic), func(msg *nats.Msg) {
+	if sub, err = x.Js.QueueSubscribe(x.subject(topic), x.queue(topic), func(msg *nats.Msg) {
 		var values map[string]interface{}
 		if err := msgpack.Unmarshal(msg.Data, &values); err != nil {
 			x.Log.Error("解码失败",
@@ -150,7 +154,7 @@ func (x *App) SetSubscribe(topic string) (err error) {
 			)
 			return
 		}
-	}, nats.ManualAck(), nats.Durable("COLLECTOR")); err != nil {
+	}, nats.ManualAck()); err != nil {
 		return
 	}
 	x.Set(topic, sub)
