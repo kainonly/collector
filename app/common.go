@@ -8,9 +8,13 @@ import (
 
 var Provides = wire.NewSet(New)
 
-func New(i *common.Inject) *App {
-	return &App{
+func New(i *common.Inject) (x *App, err error) {
+	x = &App{
 		Inject:    i,
 		Collertor: utiliy.NewCollertor(),
 	}
+	if x.LogSystem, err = utiliy.NewLogSystem(i); err != nil {
+		return
+	}
+	return
 }

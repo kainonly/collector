@@ -33,6 +33,9 @@ func App(value *common.Values) (*app.App, error) {
 		Nats:   conn,
 		Js:     jetStreamContext,
 	}
-	appApp := app.New(inject)
+	appApp, err := app.New(inject)
+	if err != nil {
+		return nil, err
+	}
 	return appApp, nil
 }

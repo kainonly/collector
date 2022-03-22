@@ -13,10 +13,9 @@ import (
 
 type App struct {
 	*common.Inject
-	*utiliy.Collertor
-	*utiliy.LogSystem
-
-	event *nats.Subscription
+	Collertor *utiliy.Collertor
+	LogSystem utiliy.LogSystem
+	event     *nats.Subscription
 }
 
 func (x *App) subject(topic string) string {
@@ -151,7 +150,7 @@ func (x *App) SetSubscribe(topic string) (err error) {
 	}, nats.ManualAck()); err != nil {
 		return
 	}
-	x.Set(topic, sub)
+	x.Collertor.Set(topic, sub)
 	x.Log.Info("订阅设置成功",
 		zap.String("subject", x.subject(topic)),
 	)
@@ -160,10 +159,10 @@ func (x *App) SetSubscribe(topic string) (err error) {
 
 // RemoveSubscribe 订阅移除
 func (x *App) RemoveSubscribe(topic string) (err error) {
-	if err = x.Get(topic).Drain(); err != nil {
+	if err = x.Collertor.Get(topic).Drain(); err != nil {
 		return
 	}
-	x.Remove(topic)
+	x.Collertor.Remove(topic)
 	x.Log.Info("订阅移除成功",
 		zap.String("subject", x.subject(topic)),
 	)

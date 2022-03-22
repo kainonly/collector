@@ -7,7 +7,6 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 	"github.com/weplanx/collector/common"
-	"github.com/weplanx/collector/utiliy"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
@@ -20,7 +19,6 @@ var Provides = wire.NewSet(
 	UseZap,
 	UseNats,
 	UseJetStream,
-	UseLogSystem,
 )
 
 // SetValues 初始化配置
@@ -78,8 +76,4 @@ func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 
 func UseJetStream(nc *nats.Conn) (nats.JetStreamContext, error) {
 	return nc.JetStream(nats.PublishAsyncMaxPending(256))
-}
-
-func UseLogSystem(values *common.Values, log *zap.Logger) (*utiliy.LogSystem, error) {
-	return utiliy.NewLogSystem(values.LogSystem, log)
 }
