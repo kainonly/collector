@@ -6,8 +6,8 @@ import (
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
-	cls "github.com/tencentcloud/tencentcloud-cls-sdk-go"
 	"github.com/weplanx/collector/common"
+	"github.com/weplanx/collector/utiliy"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
@@ -20,13 +20,13 @@ var Provides = wire.NewSet(
 	UseZap,
 	UseNats,
 	UseJetStream,
-	UseCLS,
+	UseLogSystem,
 )
 
 // SetValues 初始化配置
 func SetValues() (values *common.Values, err error) {
 	if _, err = os.Stat("./config/config.yml"); os.IsNotExist(err) {
-		err = errors.New("the path [./config.yml] does not have a configuration file")
+		err = errors.New("静态配置不存在，请检查路径 [./config/config.yml]")
 		return
 	}
 	var b []byte
@@ -41,8 +41,8 @@ func SetValues() (values *common.Values, err error) {
 	return
 }
 
-func UseZap() (logger *zap.Logger, err error) {
-	if logger, err = zap.NewProduction(); err != nil {
+func UseZap() (log *zap.Logger, err error) {
+	if log, err = zap.NewProduction(); err != nil {
 		return
 	}
 	return
@@ -59,7 +59,7 @@ func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 		return
 	}
 	if !nkeys.IsValidPublicUserKey(pub) {
-		return nil, fmt.Errorf("nats: Not a valid nkey user seed")
+		return nil, fmt.Errorf("nkey 验证失败")
 	}
 	if nc, err = nats.Connect(
 		strings.Join(values.Nats.Hosts, ","),
@@ -80,10 +80,6 @@ func UseJetStream(nc *nats.Conn) (nats.JetStreamContext, error) {
 	return nc.JetStream(nats.PublishAsyncMaxPending(256))
 }
 
-func UseCLS(values *common.Values) (*cls.AsyncProducerClient, error) {
-	producerConfig := cls.GetDefaultAsyncProducerClientConfig()
-	producerConfig.Endpoint = values.CLS.Endpoint
-	producerConfig.AccessKeyID = values.CLS.SecretId
-	producerConfig.AccessKeySecret = values.CLS.SecretKey
-	return cls.NewAsyncProducerClient(producerConfig)
+func UseLogSystem(values *common.Values, log *zap.Logger) (*utiliy.LogSystem, error) {
+	return utiliy.NewLogSystem(values.LogSystem, log)
 }

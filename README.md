@@ -5,8 +5,7 @@
 [![Release](https://img.shields.io/github/v/release/weplanx/collector.svg?style=flat-square)](https://github.com/weplanx/collector)
 [![GitHub license](https://img.shields.io/github/license/weplanx/collector?style=flat-square)](https://raw.githubusercontent.com/weplanx/collector/main/LICENSE)
 
-日志采集器在 NATS JetStream 基础上订阅匹配与 [Transfer](https://github.com/weplanx/transfer) 服务相同的命名空间，自动进行配置调度、
-日志系统写入
+日志采集器在 NATS JetStream 基础上订阅匹配与 [Transfer](https://github.com/weplanx/transfer) 服务相同的命名空间，自动进行配置调度、 日志系统写入
 
 > 版本 `*.*.*` 为 [elastic-collector](https://github.com/weplanx/log-collector/tree/elastic-collector) 已归档的分支项目
 > ，请使用 `v*.*.*` 发布的版本（预发布用于构建测试）
@@ -35,13 +34,18 @@ data:
   config.yml: |
     namespace: <命名空间>
     nats:
-      hosts: [ ]
-      nkey:
-    cls:
-      secret_id:
-      secret_key:
-      endpoint: ap-guangzhou.cls.tencentcs.com
-      topic_id: <日志主题ID>
+      hosts:
+        - "nats://a.nats:4222"
+        - "nats://b.nats:4222"
+        - "nats://c.nats:4222"
+      nkey: "<nkey>"
+    log_system:
+      type: "cls"
+      option:
+        secret_id: <建议创建CLS子用户，https://cloud.tencent.com/document/product/598/13674>
+        secret_key: 
+        endpoint: ap-guangzhou.cls.tencentcs.com
+        topic_id: <日志主题ID>
 ```
 
 2. 部署
@@ -52,7 +56,7 @@ kind: Deployment
 metadata:
   labels:
     app: collector
-  name: collector-deploy
+  name: collector
 spec:
   selector:
     matchLabels:
@@ -92,8 +96,13 @@ spec:
           name: collector
 ```
 
-例如：在 Github Actions
-中 `patch deployment collector-deploy --patch "$(sed "s/\${tag}/${{steps.meta.outputs.version}}/" < ./config/patch.yml)"`，国内可使用**Coding持续部署**或**云效流水线**等。
+例如：在 Github Actions 中
+
+```shell
+patch deployment collector --patch "$(sed "s/\${tag}/${{steps.meta.outputs.version}}/" < ./config/patch.yml)"
+```
+
+国内可使用 **Coding持续部署** 或 **云效流水线** 等
 
 ## License
 

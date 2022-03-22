@@ -4,17 +4,17 @@ import (
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/nats-io/nats.go"
-	cls "github.com/tencentcloud/tencentcloud-cls-sdk-go"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/common"
+	"github.com/weplanx/collector/utiliy"
 	"go.uber.org/zap"
 	"strconv"
-	"time"
 )
 
 type App struct {
 	*common.Inject
-	*common.Collertor
+	*utiliy.Collertor
+	*utiliy.LogSystem
 
 	event *nats.Subscription
 }
@@ -94,8 +94,6 @@ func (x *App) Run() (err error) {
 		return
 	}
 
-	// 启动 CLS
-	x.CLS.Start()
 	return
 }
 
@@ -142,18 +140,14 @@ func (x *App) SetSubscribe(topic string) (err error) {
 			zap.String("subject", x.subject(topic)),
 			zap.Any("data", data),
 		)
-		clog := cls.NewCLSLog(
-			time.Now().Unix(),
-			data,
-		)
-		reply := &common.CLSReply{Inject: x.Inject, Msg: msg}
-		if err = x.CLS.SendLog(x.Values.CLS.TopicId, clog, reply); err != nil {
+
+		if err = x.LogSystem.Push(msg, data); err != nil {
 			x.Log.Error("日志写入失败",
 				zap.Any("data", data),
 				zap.Error(err),
 			)
-			return
 		}
+
 	}, nats.ManualAck()); err != nil {
 		return
 	}
@@ -161,20 +155,6 @@ func (x *App) SetSubscribe(topic string) (err error) {
 	x.Log.Info("订阅设置成功",
 		zap.String("subject", x.subject(topic)),
 	)
-	return
-}
-
-func (x *App) Destory() (err error) {
-	x.Log.Info("正在销毁...")
-	x.CLS.Close(0)
-	for _, v := range x.Value() {
-		if err = v.Drain(); err != nil {
-			return
-		}
-	}
-	if err = x.Nats.Drain(); err != nil {
-		return
-	}
 	return
 }
 

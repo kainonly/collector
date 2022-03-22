@@ -1,4 +1,4 @@
-package common
+package utiliy
 
 import (
 	"github.com/nats-io/nats.go"

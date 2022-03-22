@@ -11,13 +11,12 @@ type Inject struct {
 	Log    *zap.Logger
 	Nats   *nats.Conn
 	Js     nats.JetStreamContext
-	CLS    *cls.AsyncProducerClient
 }
 
 type Values struct {
-	Namespace string `yaml:"namespace"`
-	Nats      Nats   `yaml:"nats"`
-	CLS       CLS    `yaml:"cls"`
+	Namespace string    `yaml:"namespace"`
+	Nats      Nats      `yaml:"nats"`
+	LogSystem LogSystem `yaml:"log_system"`
 }
 
 type Nats struct {
@@ -25,9 +24,15 @@ type Nats struct {
 	Nkey  string   `yaml:"nkey"`
 }
 
-type CLS struct {
-	SecretId  string `yaml:"secret_id"`
-	SecretKey string `yaml:"secret_key"`
-	Endpoint  string `yaml:"endpoint"`
-	TopicId   string `yaml:"topic_id"`
+type LogSystem struct {
+	Type   string                 `yaml:"type"`
+	Option map[string]interface{} `yaml:"option"`
+}
+
+func SetCLS(option map[string]interface{}) (*cls.AsyncProducerClient, error) {
+	producerConfig := cls.GetDefaultAsyncProducerClientConfig()
+	producerConfig.Endpoint = option["endpoint"].(string)
+	producerConfig.AccessKeyID = option["secretid"].(string)
+	producerConfig.AccessKeySecret = option["secretkey"].(string)
+	return cls.NewAsyncProducerClient(producerConfig)
 }
