@@ -39,9 +39,15 @@ func SetValues() (values *common.Values, err error) {
 	return
 }
 
-func UseZap() (log *zap.Logger, err error) {
-	if log, err = zap.NewProduction(); err != nil {
-		return
+func UseZap(values *common.Values) (log *zap.Logger, err error) {
+	if values.Debug {
+		if log, err = zap.NewDevelopment(); err != nil {
+			return
+		}
+	} else {
+		if log, err = zap.NewProduction(); err != nil {
+			return
+		}
 	}
 	return
 }

@@ -14,6 +14,7 @@ type Inject struct {
 
 type Values struct {
 	Namespace string    `yaml:"namespace"`
+	Debug     bool      `yaml:"debug"`
 	Nats      Nats      `yaml:"nats"`
 	LogSystem LogSystem `yaml:"log_system"`
 }
