@@ -2,13 +2,11 @@ package app
 
 import (
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/common"
 	"github.com/weplanx/collector/utiliy"
 	"go.uber.org/zap"
-	"strconv"
 )
 
 type App struct {
@@ -100,53 +98,12 @@ func (x *App) Run() (err error) {
 func (x *App) SetSubscribe(topic string) (err error) {
 	var sub *nats.Subscription
 	if sub, err = x.Js.QueueSubscribe(x.subject(topic), x.queue(topic), func(msg *nats.Msg) {
-		var values map[string]interface{}
-		if err := msgpack.Unmarshal(msg.Data, &values); err != nil {
-			x.Log.Error("解码失败",
-				zap.String("subject", msg.Subject),
-				zap.ByteString("data", msg.Data),
-				zap.Error(err),
-			)
-			return
-		}
-		data := make(map[string]string, len(values))
-		for key, value := range values {
-			switch v := value.(type) {
-			case string:
-				data[key] = v
-				break
-			case int64:
-				data[key] = strconv.FormatInt(v, 10)
-				break
-			case float64:
-				data[key] = fmt.Sprintf("%f", v)
-				break
-			default:
-				json, err := jsoniter.Marshal(value)
-				if err != nil {
-					x.Log.Error("编码失败",
-						zap.String("key", key),
-						zap.Any("value", value),
-						zap.Error(err),
-					)
-					return
-				}
-				data[key] = string(json)
-			}
-		}
-
-		x.Log.Debug("解码成功",
-			zap.String("subject", x.subject(topic)),
-			zap.Any("data", data),
-		)
-
-		if err = x.LogSystem.Push(msg, data); err != nil {
+		if err = x.LogSystem.Push(msg); err != nil {
 			x.Log.Error("日志写入失败",
-				zap.Any("data", data),
+				zap.Any("data", msg.Data),
 				zap.Error(err),
 			)
 		}
-
 	}, nats.ManualAck()); err != nil {
 		return
 	}

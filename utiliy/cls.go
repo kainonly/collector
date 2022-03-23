@@ -3,14 +3,14 @@ package utiliy
 import (
 	"github.com/nats-io/nats.go"
 	cls "github.com/tencentcloud/tencentcloud-cls-sdk-go"
+	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
 	"time"
 )
 
 type CLS struct {
-	Client  *cls.AsyncProducerClient
-	TopicId string
-	Logger  *zap.Logger
+	Client *cls.AsyncProducerClient
+	Logger *zap.Logger
 }
 
 func NewCLS(option map[string]interface{}, logger *zap.Logger) (_ LogSystem, err error) {
@@ -22,19 +22,35 @@ func NewCLS(option map[string]interface{}, logger *zap.Logger) (_ LogSystem, err
 	if x.Client, err = cls.NewAsyncProducerClient(producerConfig); err != nil {
 		return
 	}
-	x.TopicId = option["topic_id"].(string)
 	x.Client.Start()
 	x.Logger = logger
 	return x, nil
 }
 
-func (x *CLS) Push(msg *nats.Msg, data map[string]string) (err error) {
-	clog := cls.NewCLSLog(
-		time.Now().Unix(),
-		data,
+type CLSDto struct {
+	TopicId string            `msgpack:"topic_id"`
+	Record  map[string]string `msgpack:"record"`
+	Time    time.Time         `msgpack:"time"`
+}
+
+func (x *CLS) Push(msg *nats.Msg) (err error) {
+	var data CLSDto
+	if err = msgpack.Unmarshal(msg.Data, &data); err != nil {
+		x.Logger.Error("解码失败",
+			zap.String("subject", msg.Subject),
+			zap.ByteString("data", msg.Data),
+			zap.Error(err),
+		)
+		return
+	}
+	x.Logger.Debug("解码成功",
+		zap.String("subject", msg.Subject),
+		zap.Any("data", data),
+		zap.Error(err),
 	)
+	clog := cls.NewCLSLog(data.Time.Unix(), data.Record)
 	reply := &CLSReply{Logger: x.Logger, Msg: msg}
-	if err = x.Client.SendLog(x.TopicId, clog, reply); err != nil {
+	if err = x.Client.SendLog(data.TopicId, clog, reply); err != nil {
 		x.Logger.Error("日志写入失败",
 			zap.Any("data", data),
 			zap.Error(err),

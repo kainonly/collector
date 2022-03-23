@@ -6,7 +6,7 @@ import (
 )
 
 type LogSystem interface {
-	Push(msg *nats.Msg, data map[string]string) (err error)
+	Push(msg *nats.Msg) (err error)
 }
 
 func NewLogSystem(i *common.Inject) (x LogSystem, err error) {
