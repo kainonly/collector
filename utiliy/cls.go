@@ -1,6 +1,7 @@
 package utiliy
 
 import (
+	"github.com/go-playground/validator/v10"
 	"github.com/nats-io/nats.go"
 	cls "github.com/tencentcloud/tencentcloud-cls-sdk-go"
 	"github.com/vmihailenco/msgpack/v5"
@@ -28,19 +29,18 @@ func NewCLS(option map[string]interface{}, logger *zap.Logger) (_ LogSystem, err
 }
 
 type CLSDto struct {
-	TopicId string            `msgpack:"topic_id"`
-	Record  map[string]string `msgpack:"record"`
-	Time    time.Time         `msgpack:"time"`
+	TopicId string            `msgpack:"topic_id" validate:"required"`
+	Record  map[string]string `msgpack:"record" validate:"required"`
+	Time    time.Time         `msgpack:"time" validate:"required"`
 }
 
 func (x *CLS) Push(msg *nats.Msg) (err error) {
 	var data CLSDto
 	if err = msgpack.Unmarshal(msg.Data, &data); err != nil {
-		x.Logger.Error("解码失败",
-			zap.String("subject", msg.Subject),
-			zap.ByteString("data", msg.Data),
-			zap.Error(err),
-		)
+		return
+	}
+	if err = validator.New().Struct(&data); err != nil {
+		msg.Term()
 		return
 	}
 	x.Logger.Debug("解码成功",
@@ -51,10 +51,6 @@ func (x *CLS) Push(msg *nats.Msg) (err error) {
 	clog := cls.NewCLSLog(data.Time.Unix(), data.Record)
 	reply := &CLSReply{Logger: x.Logger, Msg: msg}
 	if err = x.Client.SendLog(data.TopicId, clog, reply); err != nil {
-		x.Logger.Error("日志写入失败",
-			zap.Any("data", data),
-			zap.Error(err),
-		)
 		return
 	}
 	return
