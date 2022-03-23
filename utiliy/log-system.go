@@ -1,6 +1,7 @@
 package utiliy
 
 import (
+	"fmt"
 	"github.com/nats-io/nats.go"
 	"github.com/weplanx/collector/common"
 )
@@ -17,6 +18,13 @@ func NewLogSystem(i *common.Inject) (x LogSystem, err error) {
 			return
 		}
 		break
+	case "influx":
+		if x, err = NewInflux(v.Option, i.Log); err != nil {
+			return
+		}
+		break
+	default:
+		return nil, fmt.Errorf(`不存在 [%s] 日志系统类型`, v.Type)
 	}
 	return
 }

@@ -12,7 +12,7 @@
 
 ## 部署服务
 
-消费数据可选择腾讯云 CLS 日志系统写入，通过 CLS 可进行更多自定义，例如：投递至智能分层的 COS 对象存储中替代永久存储等。也支持写入到自定的 influxDB 数据库中做定制处理。
+消费数据可选择腾讯云 CLS 日志系统写入，通过 CLS 可进行更多自定义，例如：投递至智能分层的 COS 对象存储中替代永久存储等。也支持写入到自定的 influxDB2 时序数据库中。
 
 ![Collector](./topology.png)
 
@@ -40,12 +40,17 @@ data:
         - "nats://c.nats:4222"
       nkey: "<nkey>"
     log_system:
-      type: "cls"
+      # type: "cls"
+      # option:
+      #  secret_id: <建议创建CLS子用户，https://cloud.tencent.com/document/product/598/13674>
+      #   secret_key: 
+      #   endpoint: ap-guangzhou.cls.tencentcs.com
+      type: "influx"
       option:
-        secret_id: <建议创建CLS子用户，https://cloud.tencent.com/document/product/598/13674>
-        secret_key: 
-        endpoint: ap-guangzhou.cls.tencentcs.com
-        topic_id: <日志主题ID>
+        url: http://localhost:8086
+        token: <authToken>
+        org: 
+        bucket: 
 ```
 
 2. 部署
