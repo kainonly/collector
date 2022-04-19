@@ -27,11 +27,15 @@ func App(value *common.Values) (*app.App, error) {
 	if err != nil {
 		return nil, err
 	}
+	objectStore, err := bootstrap.UseStore(value, jetStreamContext)
+	if err != nil {
+		return nil, err
+	}
 	inject := &common.Inject{
 		Values: value,
 		Log:    logger,
-		Nats:   conn,
 		Js:     jetStreamContext,
+		Store:  objectStore,
 	}
 	appApp, err := app.New(inject)
 	if err != nil {

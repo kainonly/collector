@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/weplanx/collector/bootstrap"
+	"github.com/weplanx/collector/common"
 	"os"
 	"os/signal"
 )
 
 func main() {
-	v, err := bootstrap.SetValues()
+	v, err := common.SetValues()
 	if err != nil {
 		panic(err)
 	}

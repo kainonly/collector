@@ -5,31 +5,32 @@ import (
 )
 
 type Collertor struct {
-	values map[string]*nats.Subscription
+	options map[string]*CollertorOption
+	subs    map[string]*nats.Subscription
+}
+
+type CollertorOption struct {
+	Topic       string `msgpack:"topic"`
+	Description string `msgpack:"description"`
 }
 
 func NewCollertor() *Collertor {
 	return &Collertor{
-		values: make(map[string]*nats.Subscription),
+		subs:    make(map[string]*nats.Subscription),
+		options: make(map[string]*CollertorOption),
 	}
 }
 
-func (x *Collertor) Value() map[string]*nats.Subscription {
-	return x.values
+func (x *Collertor) Get(key string) *nats.Subscription {
+	return x.subs[key]
 }
 
-func (x *Collertor) Size() int {
-	return len(x.values)
+func (x *Collertor) Set(key string, option *CollertorOption, v *nats.Subscription) {
+	x.options[key] = option
+	x.subs[key] = v
 }
 
-func (x *Collertor) Get(k string) *nats.Subscription {
-	return x.values[k]
-}
-
-func (x *Collertor) Set(k string, v *nats.Subscription) {
-	x.values[k] = v
-}
-
-func (x *Collertor) Remove(k string) {
-	delete(x.values, k)
+func (x *Collertor) Remove(key string) {
+	delete(x.options, key)
+	delete(x.subs, key)
 }

@@ -1,16 +1,12 @@
 package bootstrap
 
 import (
-	"errors"
 	"fmt"
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 	"github.com/weplanx/collector/common"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
-	"os"
 	"strings"
 	"time"
 )
@@ -19,25 +15,8 @@ var Provides = wire.NewSet(
 	UseZap,
 	UseNats,
 	UseJetStream,
+	UseStore,
 )
-
-// SetValues 初始化配置
-func SetValues() (values *common.Values, err error) {
-	if _, err = os.Stat("./config/config.yml"); os.IsNotExist(err) {
-		err = errors.New("静态配置不存在，请检查路径 [./config/config.yml]")
-		return
-	}
-	var b []byte
-	b, err = ioutil.ReadFile("./config/config.yml")
-	if err != nil {
-		return
-	}
-	err = yaml.Unmarshal(b, &values)
-	if err != nil {
-		return
-	}
-	return
-}
 
 func UseZap(values *common.Values) (log *zap.Logger, err error) {
 	if values.Debug {
@@ -82,4 +61,10 @@ func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 
 func UseJetStream(nc *nats.Conn) (nats.JetStreamContext, error) {
 	return nc.JetStream(nats.PublishAsyncMaxPending(256))
+}
+
+func UseStore(values *common.Values, js nats.JetStreamContext) (nats.ObjectStore, error) {
+	return js.CreateObjectStore(&nats.ObjectStoreConfig{
+		Bucket: values.Namespace,
+	})
 }
