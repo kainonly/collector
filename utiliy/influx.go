@@ -1,6 +1,7 @@
 package utiliy
 
 import (
+	"context"
 	"github.com/go-playground/validator/v10"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/nats-io/nats.go"
@@ -49,17 +50,18 @@ func (x *Influx) Push(msg *nats.Msg) (err error) {
 		zap.Any("data", data),
 		zap.Error(err),
 	)
-	api := x.Client.WriteAPI(x.Org, x.Bucket)
-	p := influxdb2.NewPointWithMeasurement(data.Measurement).
-		SetTime(data.Time)
+	api := x.Client.WriteAPIBlocking(x.Org, x.Bucket)
+	p := influxdb2.NewPointWithMeasurement(data.Measurement).SetTime(data.Time)
 	for k, v := range data.Tags {
 		p = p.AddTag(k, v)
 	}
 	for k, v := range data.Fields {
 		p = p.AddField(k, v)
 	}
-	api.WritePoint(p)
-	api.Flush()
+	if err = api.WritePoint(context.TODO(), p); err != nil {
+		msg.Nak()
+		return
+	}
 	x.Logger.Debug("日志写入成功",
 		zap.Any("data", data),
 	)
