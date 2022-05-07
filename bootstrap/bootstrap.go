@@ -65,6 +65,6 @@ func UseJetStream(nc *nats.Conn) (nats.JetStreamContext, error) {
 
 func UseStore(values *common.Values, js nats.JetStreamContext) (nats.ObjectStore, error) {
 	return js.CreateObjectStore(&nats.ObjectStoreConfig{
-		Bucket: values.Namespace,
+		Bucket: fmt.Sprintf(`%s_logs`, values.Namespace),
 	})
 }
