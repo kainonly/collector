@@ -34,10 +34,10 @@ type Inject struct {
 }
 
 type Values struct {
-	Namespace string    `yaml:"namespace"`
-	Debug     bool      `yaml:"debug"`
-	Nats      Nats      `yaml:"nats"`
-	LogSystem LogSystem `yaml:"log_system"`
+	Namespace  string     `yaml:"namespace"`
+	Debug      bool       `yaml:"debug"`
+	Nats       Nats       `yaml:"nats"`
+	DataSource DataSource `yaml:"data_source"`
 }
 
 type Nats struct {
@@ -45,7 +45,7 @@ type Nats struct {
 	Nkey  string   `yaml:"nkey"`
 }
 
-type LogSystem struct {
+type DataSource struct {
 	Type   string                 `yaml:"type"`
 	Option map[string]interface{} `yaml:"option"`
 }

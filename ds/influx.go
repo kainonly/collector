@@ -1,4 +1,4 @@
-package utiliy
+package ds
 
 import (
 	"context"
@@ -17,7 +17,7 @@ type Influx struct {
 	Logger *zap.Logger
 }
 
-func NewInflux(option map[string]interface{}, logger *zap.Logger) (_ LogSystem, err error) {
+func NewInflux(option map[string]interface{}, logger *zap.Logger) (_ DataSource, err error) {
 	x := new(Influx)
 	x.Client = influxdb2.NewClient(
 		option["url"].(string),

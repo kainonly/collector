@@ -1,4 +1,4 @@
-package utiliy
+package ds
 
 import (
 	"github.com/go-playground/validator/v10"
@@ -14,7 +14,7 @@ type CLS struct {
 	Logger *zap.Logger
 }
 
-func NewCLS(option map[string]interface{}, logger *zap.Logger) (_ LogSystem, err error) {
+func NewCLS(option map[string]interface{}, logger *zap.Logger) (_ DataSource, err error) {
 	x := new(CLS)
 	producerConfig := cls.GetDefaultAsyncProducerClientConfig()
 	producerConfig.AccessKeyID = option["secret_id"].(string)

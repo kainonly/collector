@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/weplanx/collector/utiliy"
 	"go.uber.org/zap"
 	"time"
 )
@@ -26,7 +25,7 @@ func (x *App) Run() (err error) {
 		if b, err = x.Store.GetBytes(key); err != nil {
 			return
 		}
-		var option utiliy.CollertorOption
+		var option Option
 		if err = msgpack.Unmarshal(b, &option); err != nil {
 			x.Log.Error("解码失败",
 				zap.ByteString("data", b),
@@ -59,7 +58,7 @@ func (x *App) Run() (err error) {
 			if b, err = x.Store.GetBytes(key); err != nil {
 				return
 			}
-			var option utiliy.CollertorOption
+			var option Option
 			if err = msgpack.Unmarshal(b, &option); err != nil {
 				x.Log.Error("解码失败",
 					zap.ByteString("data", b),
@@ -87,10 +86,10 @@ func (x *App) Run() (err error) {
 }
 
 // SetSubscribe 订阅设置
-func (x *App) SetSubscribe(key string, option *utiliy.CollertorOption) (err error) {
+func (x *App) SetSubscribe(key string, option *Option) (err error) {
 	var sub *nats.Subscription
 	if sub, err = x.Js.QueueSubscribe(x.subject(option.Topic), x.queue(option.Topic), func(msg *nats.Msg) {
-		if err = x.LogSystem.Push(msg); err != nil {
+		if err = x.Ds.Push(msg); err != nil {
 			x.Log.Error("日志写入失败",
 				zap.Any("data", msg.Data),
 				zap.Error(err),
@@ -99,7 +98,7 @@ func (x *App) SetSubscribe(key string, option *utiliy.CollertorOption) (err erro
 	}, nats.ManualAck()); err != nil {
 		return
 	}
-	x.Collertor.Set(key, option, sub)
+	x.Set(key, option, sub)
 	x.Log.Info("订阅设置成功",
 		zap.String("key", key),
 		zap.String("subject", x.subject(option.Topic)),
@@ -109,10 +108,10 @@ func (x *App) SetSubscribe(key string, option *utiliy.CollertorOption) (err erro
 
 // RemoveSubscribe 订阅移除
 func (x *App) RemoveSubscribe(key string) (err error) {
-	if err = x.Collertor.Get(key).Drain(); err != nil {
+	if err = x.Get(key).Drain(); err != nil {
 		return
 	}
-	x.Collertor.Remove(key)
+	x.Remove(key)
 	x.Log.Info("订阅移除成功",
 		zap.String("key", key),
 	)
