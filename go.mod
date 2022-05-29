@@ -11,7 +11,7 @@ require (
 	github.com/tencentcloud/tencentcloud-cls-sdk-go v0.0.0-20220107074144-c92bd2517aab
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.uber.org/zap v1.21.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
