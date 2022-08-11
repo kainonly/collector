@@ -13,11 +13,6 @@ type DataSource interface {
 func New(i *common.Inject) (x DataSource, err error) {
 	v := i.Values.DataSource
 	switch v.Type {
-	case "cls":
-		if x, err = NewCLS(v.Option, i.Log); err != nil {
-			return
-		}
-		break
 	case "influx":
 		if x, err = NewInflux(v.Option, i.Log); err != nil {
 			return

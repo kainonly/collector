@@ -2,16 +2,14 @@ package app
 
 import (
 	"fmt"
-	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
 	"github.com/weplanx/collector/common"
 	"github.com/weplanx/collector/ds"
 )
 
-var Provides = wire.NewSet(New)
-
 type App struct {
 	*common.Inject
+
 	Ds      ds.DataSource
 	options map[string]*Option
 	subs    map[string]*nats.Subscription

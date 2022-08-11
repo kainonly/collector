@@ -2,8 +2,8 @@ package app
 
 import (
 	"errors"
+	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
-	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
 	"time"
 )
@@ -26,7 +26,7 @@ func (x *App) Run() (err error) {
 			return
 		}
 		var option Option
-		if err = msgpack.Unmarshal(b, &option); err != nil {
+		if err = sonic.Unmarshal(b, &option); err != nil {
 			x.Log.Error("解码失败",
 				zap.ByteString("data", b),
 				zap.Error(err),
@@ -59,7 +59,7 @@ func (x *App) Run() (err error) {
 				return
 			}
 			var option Option
-			if err = msgpack.Unmarshal(b, &option); err != nil {
+			if err = sonic.Unmarshal(b, &option); err != nil {
 				x.Log.Error("解码失败",
 					zap.ByteString("data", b),
 					zap.Error(err),

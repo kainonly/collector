@@ -2,10 +2,9 @@ package ds
 
 import (
 	"context"
-	"github.com/go-playground/validator/v10"
+	"github.com/bytedance/sonic"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/nats-io/nats.go"
-	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
 	"time"
 )
@@ -30,19 +29,15 @@ func NewInflux(option map[string]interface{}, logger *zap.Logger) (_ DataSource,
 }
 
 type InfluxDto struct {
-	Measurement string                 `msgpack:"measurement" validate:"required"`
-	Tags        map[string]string      `msgpack:"tags" validate:"required"`
-	Fields      map[string]interface{} `msgpack:"fields" validate:"required"`
-	Time        time.Time              `msgpack:"time" validate:"required"`
+	Measurement string                 `json:"measurement"`
+	Tags        map[string]string      `json:"tags"`
+	Fields      map[string]interface{} `json:"fields"`
+	Time        time.Time              `json:"time"`
 }
 
 func (x *Influx) Push(msg *nats.Msg) (err error) {
 	var data InfluxDto
-	if err = msgpack.Unmarshal(msg.Data, &data); err != nil {
-		return
-	}
-	if err = validator.New().Struct(&data); err != nil {
-		msg.Term()
+	if err = sonic.Unmarshal(msg.Data, &data); err != nil {
 		return
 	}
 	x.Logger.Debug("解码成功",
