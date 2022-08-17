@@ -13,7 +13,7 @@ func NewApp() (*app.App, error) {
 	wire.Build(
 		wire.Struct(new(common.Inject), "*"),
 		Provides,
-		app.New,
+		app.Initialize,
 	)
 	return &app.App{}, nil
 }

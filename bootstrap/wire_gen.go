@@ -34,15 +34,14 @@ func NewApp() (*app.App, error) {
 	if err != nil {
 		return nil, err
 	}
+	client := UseInflux(values)
 	inject := &common.Inject{
 		Values: values,
 		Log:    logger,
 		Js:     jetStreamContext,
 		Store:  objectStore,
+		Influx: client,
 	}
-	appApp, err := app.New(inject)
-	if err != nil {
-		return nil, err
-	}
+	appApp := app.Initialize(inject)
 	return appApp, nil
 }

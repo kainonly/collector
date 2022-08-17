@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"fmt"
 	"github.com/google/wire"
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 	"github.com/weplanx/collector/common"
@@ -16,10 +17,11 @@ import (
 
 var Provides = wire.NewSet(
 	LoadValues,
+	UseZap,
 	UseNats,
 	UseJetStream,
 	UseStore,
-	UseZap,
+	UseInflux,
 )
 
 // LoadValues 加载静态配置
@@ -35,6 +37,21 @@ func LoadValues() (values *common.Values, err error) {
 	}
 	if err = yaml.Unmarshal(b, &values); err != nil {
 		return
+	}
+	return
+}
+
+// UseZap 初始日志
+// 说明 https://pkg.go.dev/go.uber.org/zap
+func UseZap() (log *zap.Logger, err error) {
+	if os.Getenv("MODE") != "release" {
+		if log, err = zap.NewDevelopment(); err != nil {
+			return
+		}
+	} else {
+		if log, err = zap.NewProduction(); err != nil {
+			return
+		}
 	}
 	return
 }
@@ -84,17 +101,10 @@ func UseStore(values *common.Values, js nats.JetStreamContext) (nats.ObjectStore
 	})
 }
 
-// UseZap 初始日志
-// 说明 https://pkg.go.dev/go.uber.org/zap
-func UseZap() (log *zap.Logger, err error) {
-	if os.Getenv("MODE") != "release" {
-		if log, err = zap.NewDevelopment(); err != nil {
-			return
-		}
-	} else {
-		if log, err = zap.NewProduction(); err != nil {
-			return
-		}
-	}
-	return
+// UseInflux 初始化 InfluxDB2
+func UseInflux(values *common.Values) influxdb2.Client {
+	return influxdb2.NewClient(
+		values.Influx.Url,
+		values.Influx.Token,
+	)
 }
