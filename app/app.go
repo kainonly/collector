@@ -46,20 +46,20 @@ func (x *App) queue(measurement string) string {
 }
 
 // Get 获取订阅
-func (x *App) Get(key string) *nats.Subscription {
-	return x.subs[key]
+func (x *App) Get(measurement string) *nats.Subscription {
+	return x.subs[measurement]
 }
 
 // Set 设置订阅配置
-func (x *App) Set(key string, option *Option, v *nats.Subscription) {
-	x.options[key] = option
-	x.subs[key] = v
+func (x *App) Set(measurement string, option *Option, v *nats.Subscription) {
+	x.options[measurement] = option
+	x.subs[measurement] = v
 }
 
 // Remove 移除订阅配置
-func (x *App) Remove(key string) {
-	delete(x.options, key)
-	delete(x.subs, key)
+func (x *App) Remove(measurement string) {
+	delete(x.options, measurement)
+	delete(x.subs, measurement)
 }
 
 // Run 启动服务
@@ -74,9 +74,9 @@ func (x *App) Run() (err error) {
 		}
 	}
 	for _, o := range objects {
-		key := o.Name
+		measurement := o.Name
 		var b []byte
-		if b, err = x.Store.GetBytes(key); err != nil {
+		if b, err = x.Store.GetBytes(measurement); err != nil {
 			return
 		}
 		var option Option
@@ -87,9 +87,9 @@ func (x *App) Run() (err error) {
 			)
 			return
 		}
-		if err = x.SetSubscribe(key, &option); err != nil {
+		if err = x.SetSubscribe(measurement, &option); err != nil {
 			x.Log.Error("订阅设置失败",
-				zap.String("key", key),
+				zap.String("measurement", measurement),
 				zap.String("subject", x.subject(option.Measurement)),
 				zap.Error(err),
 			)
@@ -108,10 +108,10 @@ func (x *App) Run() (err error) {
 		if o == nil || o.ModTime.Unix() < current.Unix() {
 			continue
 		}
-		key := o.Name
+		measurement := o.Name
 		if !o.Deleted {
 			var b []byte
-			if b, err = x.Store.GetBytes(key); err != nil {
+			if b, err = x.Store.GetBytes(measurement); err != nil {
 				return
 			}
 			var option Option
@@ -122,17 +122,17 @@ func (x *App) Run() (err error) {
 				)
 				return
 			}
-			if err := x.SetSubscribe(key, &option); err != nil {
+			if err := x.SetSubscribe(measurement, &option); err != nil {
 				x.Log.Error("订阅设置失败",
-					zap.String("key", key),
+					zap.String("measurement", measurement),
 					zap.String("subject", x.subject(option.Measurement)),
 					zap.Error(err),
 				)
 			}
 		} else {
-			if err := x.RemoveSubscribe(key); err != nil {
+			if err := x.RemoveSubscribe(measurement); err != nil {
 				x.Log.Error("订阅移除失败",
-					zap.String("key", key),
+					zap.String("measurement", measurement),
 					zap.Error(err),
 				)
 			}
@@ -143,10 +143,10 @@ func (x *App) Run() (err error) {
 }
 
 // SetSubscribe 订阅设置
-func (x *App) SetSubscribe(key string, option *Option) (err error) {
+func (x *App) SetSubscribe(measurement string, option *Option) (err error) {
 	var sub *nats.Subscription
-	if sub, err = x.Js.QueueSubscribe(x.subject(option.Measurement), x.queue(option.Measurement), func(msg *nats.Msg) {
-		if err = x.Push(option.Measurement, msg); err != nil {
+	if sub, err = x.Js.QueueSubscribe(x.subject(measurement), x.queue(measurement), func(msg *nats.Msg) {
+		if err = x.Push(measurement, msg); err != nil {
 			x.Log.Error("日志写入失败",
 				zap.Any("data", msg.Data),
 				zap.Error(err),
@@ -155,22 +155,22 @@ func (x *App) SetSubscribe(key string, option *Option) (err error) {
 	}, nats.ManualAck()); err != nil {
 		return
 	}
-	x.Set(key, option, sub)
+	x.Set(measurement, option, sub)
 	x.Log.Info("订阅设置成功",
-		zap.String("key", key),
+		zap.String("measurement", measurement),
 		zap.String("subject", x.subject(option.Measurement)),
 	)
 	return
 }
 
 // RemoveSubscribe 订阅移除
-func (x *App) RemoveSubscribe(key string) (err error) {
-	if err = x.Get(key).Drain(); err != nil {
+func (x *App) RemoveSubscribe(measurement string) (err error) {
+	if err = x.Get(measurement).Drain(); err != nil {
 		return
 	}
-	x.Remove(key)
+	x.Remove(measurement)
 	x.Log.Info("订阅移除成功",
-		zap.String("key", key),
+		zap.String("measurement", measurement),
 	)
 	return
 }
