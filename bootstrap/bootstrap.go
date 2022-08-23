@@ -103,8 +103,6 @@ func UseStore(values *common.Values, js nats.JetStreamContext) (nats.ObjectStore
 
 // UseInflux 初始化 InfluxDB2
 func UseInflux(values *common.Values) influxdb2.Client {
-	return influxdb2.NewClient(
-		values.Influx.Url,
-		values.Influx.Token,
-	)
+	option := values.Influx
+	return influxdb2.NewClient(option.Url, option.Token)
 }

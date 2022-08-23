@@ -12,6 +12,13 @@ import (
 	"time"
 )
 
+type Option struct {
+	// 指标
+	Measurement string `json:"measurement"`
+	// 描述
+	Description string `json:"description"`
+}
+
 type App struct {
 	*common.Inject
 
@@ -19,11 +26,7 @@ type App struct {
 	subs    map[string]*nats.Subscription
 }
 
-type Option struct {
-	Topic       string `json:"topic"`
-	Description string `json:"description"`
-}
-
+// Initialize 初始化 App
 func Initialize(i *common.Inject) (x *App) {
 	return &App{
 		Inject:  i,
@@ -32,23 +35,28 @@ func Initialize(i *common.Inject) (x *App) {
 	}
 }
 
-func (x *App) subject(topic string) string {
-	return fmt.Sprintf(`%s.logs.%s`, x.Values.Namespace, topic)
+// 队列主题名称
+func (x *App) subject(measurement string) string {
+	return fmt.Sprintf(`%s.logs.%s`, x.Values.Namespace, measurement)
 }
 
-func (x *App) queue(topic string) string {
-	return fmt.Sprintf(`%s:logs:%s`, x.Values.Namespace, topic)
+// 队列名称
+func (x *App) queue(measurement string) string {
+	return fmt.Sprintf(`%s:logs:%s`, x.Values.Namespace, measurement)
 }
 
+// Get 获取订阅
 func (x *App) Get(key string) *nats.Subscription {
 	return x.subs[key]
 }
 
+// Set 设置订阅配置
 func (x *App) Set(key string, option *Option, v *nats.Subscription) {
 	x.options[key] = option
 	x.subs[key] = v
 }
 
+// Remove 移除订阅配置
 func (x *App) Remove(key string) {
 	delete(x.options, key)
 	delete(x.subs, key)
@@ -82,11 +90,13 @@ func (x *App) Run() (err error) {
 		if err = x.SetSubscribe(key, &option); err != nil {
 			x.Log.Error("订阅设置失败",
 				zap.String("key", key),
-				zap.String("subject", x.subject(option.Topic)),
+				zap.String("subject", x.subject(option.Measurement)),
 				zap.Error(err),
 			)
 		}
 	}
+
+	x.Log.Info("服务已启动")
 
 	// 订阅事件状态
 	var watch nats.ObjectWatcher
@@ -115,7 +125,7 @@ func (x *App) Run() (err error) {
 			if err := x.SetSubscribe(key, &option); err != nil {
 				x.Log.Error("订阅设置失败",
 					zap.String("key", key),
-					zap.String("subject", x.subject(option.Topic)),
+					zap.String("subject", x.subject(option.Measurement)),
 					zap.Error(err),
 				)
 			}
@@ -128,14 +138,15 @@ func (x *App) Run() (err error) {
 			}
 		}
 	}
+
 	return
 }
 
 // SetSubscribe 订阅设置
 func (x *App) SetSubscribe(key string, option *Option) (err error) {
 	var sub *nats.Subscription
-	if sub, err = x.Js.QueueSubscribe(x.subject(option.Topic), x.queue(option.Topic), func(msg *nats.Msg) {
-		if err = x.Push(msg); err != nil {
+	if sub, err = x.Js.QueueSubscribe(x.subject(option.Measurement), x.queue(option.Measurement), func(msg *nats.Msg) {
+		if err = x.Push(option.Measurement, msg); err != nil {
 			x.Log.Error("日志写入失败",
 				zap.Any("data", msg.Data),
 				zap.Error(err),
@@ -147,7 +158,7 @@ func (x *App) SetSubscribe(key string, option *Option) (err error) {
 	x.Set(key, option, sub)
 	x.Log.Info("订阅设置成功",
 		zap.String("key", key),
-		zap.String("subject", x.subject(option.Topic)),
+		zap.String("subject", x.subject(option.Measurement)),
 	)
 	return
 }
@@ -164,38 +175,40 @@ func (x *App) RemoveSubscribe(key string) (err error) {
 	return
 }
 
-type InfluxDto struct {
-	Measurement string                 `json:"measurement"`
-	Tags        map[string]string      `json:"tags"`
-	Fields      map[string]interface{} `json:"fields"`
-	Time        time.Time              `json:"time"`
+type Payload struct {
+	// 标签
+	Tags map[string]string `json:"tags"`
+	// 字段
+	Fields map[string]interface{} `json:"fields"`
+	// 时间
+	Time time.Time `json:"time"`
 }
 
 // Push 推送日志
-func (x *App) Push(msg *nats.Msg) (err error) {
-	var data InfluxDto
-	if err = sonic.Unmarshal(msg.Data, &data); err != nil {
+func (x *App) Push(measurement string, msg *nats.Msg) (err error) {
+	var payload Payload
+	if err = sonic.Unmarshal(msg.Data, &payload); err != nil {
 		return
 	}
 	x.Log.Debug("解码成功",
 		zap.String("subject", msg.Subject),
-		zap.Any("data", data),
+		zap.Any("data", payload),
 		zap.Error(err),
 	)
-	api := x.Influx.WriteAPIBlocking(x.Values.Influx.Org, x.Values.Influx.Bucket)
-	p := influxdb2.NewPointWithMeasurement(data.Measurement).SetTime(data.Time)
-	for k, v := range data.Tags {
-		p = p.AddTag(k, v)
-	}
-	for k, v := range data.Fields {
-		p = p.AddField(k, v)
-	}
-	if err = api.WritePoint(context.TODO(), p); err != nil {
+	api := x.Influx.WriteAPIBlocking(x.Values.Influx.Org, x.Values.Namespace)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	if err = api.WritePoint(ctx, influxdb2.NewPoint(
+		measurement,
+		payload.Tags,
+		payload.Fields,
+		payload.Time,
+	)); err != nil {
 		msg.Nak()
 		return
 	}
 	x.Log.Debug("日志写入成功",
-		zap.Any("data", data),
+		zap.Any("payload", payload),
 	)
 	msg.Ack()
 	return
