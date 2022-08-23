@@ -31,8 +31,7 @@ type Nats struct {
 }
 
 type Influx struct {
-	Url    string `yaml:"url"`
-	Token  string `yaml:"token"`
-	Org    string `yaml:"org"`
-	Bucket string `yaml:"bucket"`
+	Url   string `yaml:"url"`
+	Token string `yaml:"token"`
+	Org   string `yaml:"org"`
 }
