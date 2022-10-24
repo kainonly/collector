@@ -9,8 +9,6 @@ The log collection service subscribes to the same namespace as the [Transfer](ht
 
 - Documentation：[Yuque](https://www.yuque.com/kainonly/weplanx/collector)
 
-![](/yuque_diagram.jpg)
-
 ## License
 
 [BSD-3-Clause License](https://github.com/weplanx/collector/blob/main/LICENSE)
