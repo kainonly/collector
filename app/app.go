@@ -176,7 +176,7 @@ func (x *App) RemoveSubscribe(measurement string) (err error) {
 
 type Payload struct {
 	// 元数据
-	Metadata map[string]string `bson:"metadata" json:"metadata"`
+	Metadata map[string]interface{} `bson:"metadata" json:"metadata"`
 	// 日志
 	Data map[string]interface{} `bson:"data" json:"data"`
 	// 时间

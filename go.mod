@@ -6,7 +6,7 @@ require (
 	github.com/bytedance/sonic v1.5.0
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/google/wire v0.5.0
-	github.com/nats-io/nats.go v1.13.1-0.20220308171302-2f2f6968e98d
+	github.com/nats-io/nats.go v1.18.0
 	github.com/nats-io/nkeys v0.3.0
 	go.mongodb.org/mongo-driver v1.10.3
 	go.uber.org/zap v1.21.0
