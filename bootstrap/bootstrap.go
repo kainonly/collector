@@ -1,41 +1,35 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
+	"github.com/caarlos0/env/v6"
 	"github.com/google/wire"
-	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 	"github.com/weplanx/collector/common"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 )
 
 var Provides = wire.NewSet(
-	LoadValues,
+	LoadStaticValues,
 	UseZap,
+	UseMongoDB,
+	UseDatabase,
 	UseNats,
 	UseJetStream,
-	UseStore,
-	UseInflux,
+	UseKeyValue,
 )
 
-// LoadValues 加载静态配置
-// 默认配置路径 ./config/config.yml
-func LoadValues() (values *common.Values, err error) {
-	path := "./config/config.yml"
-	if _, err = os.Stat(path); os.IsNotExist(err) {
-		return nil, fmt.Errorf("静态配置不存在，请检查路径 [%s]", path)
-	}
-	var b []byte
-	if b, err = ioutil.ReadFile(path); err != nil {
-		return
-	}
-	if err = yaml.Unmarshal(b, &values); err != nil {
+// LoadStaticValues 加载静态配置
+func LoadStaticValues() (values *common.Values, err error) {
+	values = new(common.Values)
+	if err = env.Parse(values); err != nil {
 		return
 	}
 	return
@@ -54,6 +48,23 @@ func UseZap() (log *zap.Logger, err error) {
 		}
 	}
 	return
+}
+
+// UseMongoDB 初始化 MongoDB
+// 配置文档 https://www.mongodb.com/docs/drivers/go/current/
+// https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo
+func UseMongoDB(values *common.Values) (*mongo.Client, error) {
+	return mongo.Connect(
+		context.TODO(),
+		options.Client().ApplyURI(values.Database),
+	)
+}
+
+// UseDatabase 初始化数据库
+// 配置文档 https://www.mongodb.com/docs/drivers/go/current/
+// https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo
+func UseDatabase(values *common.Values, client *mongo.Client) (db *mongo.Database) {
+	return client.Database(values.Namespace)
 }
 
 // UseNats 初始化 Nats
@@ -93,16 +104,10 @@ func UseJetStream(nc *nats.Conn) (nats.JetStreamContext, error) {
 	return nc.JetStream(nats.PublishAsyncMaxPending(256))
 }
 
-// UseStore 初始分布配置
-// 说明 https://docs.nats.io/nats-concepts/jetstream/obj_store
-func UseStore(values *common.Values, js nats.JetStreamContext) (nats.ObjectStore, error) {
-	return js.CreateObjectStore(&nats.ObjectStoreConfig{
+// UseKeyValue 初始分布配置
+// 说明 https://docs.nats.io/using-nats/developer/develop_jetstream/kv
+func UseKeyValue(values *common.Values, js nats.JetStreamContext) (nats.KeyValue, error) {
+	return js.CreateKeyValue(&nats.KeyValueConfig{
 		Bucket: fmt.Sprintf(`%s_logs`, values.Namespace),
 	})
-}
-
-// UseInflux 初始化 InfluxDB2
-func UseInflux(values *common.Values) influxdb2.Client {
-	option := values.Influx
-	return influxdb2.NewClient(option.Url, option.Token)
 }

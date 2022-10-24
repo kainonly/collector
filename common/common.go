@@ -1,37 +1,34 @@
 package common
 
 import (
-	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/nats-io/nats.go"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
 
 type Inject struct {
-	Values *Values
-	Log    *zap.Logger
-	Js     nats.JetStreamContext
-	Store  nats.ObjectStore
-	Influx influxdb2.Client
+	Values    *Values
+	Log       *zap.Logger
+	Db        *mongo.Database
+	JetStream nats.JetStreamContext
+	KeyValue  nats.KeyValue
 }
 
 type Values struct {
 	// 命名空间
-	Namespace string `yaml:"namespace"`
+	Namespace string `env:"NAMESPACE,required"`
+
+	// MongoDB 连接 Uri
+	Database string `env:"DATABASE,required"`
 
 	// NATS 配置
-	Nats Nats `yaml:"nats"`
-
-	// Influx 配置
-	Influx Influx `yaml:"influx"`
+	Nats `envPrefix:"NATS_"`
 }
 
 type Nats struct {
-	Hosts []string `yaml:"hosts"`
-	Nkey  string   `yaml:"nkey"`
-}
+	// Nats 连接地址
+	Hosts []string `env:"HOSTS,required" envSeparator:","`
 
-type Influx struct {
-	Url   string `yaml:"url"`
-	Token string `yaml:"token"`
-	Org   string `yaml:"org"`
+	// Nats Nkey 认证
+	Nkey string `env:"NKEY,required"`
 }

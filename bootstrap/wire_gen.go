@@ -14,7 +14,7 @@ import (
 // Injectors from wire.go:
 
 func NewApp() (*app.App, error) {
-	values, err := LoadValues()
+	values, err := LoadStaticValues()
 	if err != nil {
 		return nil, err
 	}
@@ -22,6 +22,11 @@ func NewApp() (*app.App, error) {
 	if err != nil {
 		return nil, err
 	}
+	client, err := UseMongoDB(values)
+	if err != nil {
+		return nil, err
+	}
+	database := UseDatabase(values, client)
 	conn, err := UseNats(values)
 	if err != nil {
 		return nil, err
@@ -30,17 +35,16 @@ func NewApp() (*app.App, error) {
 	if err != nil {
 		return nil, err
 	}
-	objectStore, err := UseStore(values, jetStreamContext)
+	keyValue, err := UseKeyValue(values, jetStreamContext)
 	if err != nil {
 		return nil, err
 	}
-	client := UseInflux(values)
 	inject := &common.Inject{
-		Values: values,
-		Log:    logger,
-		Js:     jetStreamContext,
-		Store:  objectStore,
-		Influx: client,
+		Values:    values,
+		Log:       logger,
+		Db:        database,
+		JetStream: jetStreamContext,
+		KeyValue:  keyValue,
 	}
 	appApp := app.Initialize(inject)
 	return appApp, nil

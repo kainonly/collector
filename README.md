@@ -5,9 +5,9 @@
 [![Release](https://img.shields.io/github/v/release/weplanx/collector.svg?style=flat-square)](https://github.com/weplanx/collector)
 [![GitHub license](https://img.shields.io/github/license/weplanx/collector?style=flat-square)](https://raw.githubusercontent.com/weplanx/collector/main/LICENSE)
 
-日志采集服务在 NATS JetStream 基础上订阅匹配与 [Transfer](https://github.com/weplanx/transfer) 传输客户端相同的命名空间，自动进行配置调度、 日志系统写入
+The log collection service subscribes to the same namespace as the [Transfer](https://github.com/weplanx/transfer) transfer client based on NATS JetStream, and automatically performs configuration scheduling and log system writing
 
-- 技术文档：[语雀](https://www.yuque.com/kainonly/weplanx/collector)
+- Technical Documentation：[Yuque](https://www.yuque.com/kainonly/weplanx/collector)
 
 ## License
 

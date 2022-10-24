@@ -5,25 +5,24 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bytedance/sonic"
-	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/nats-io/nats.go"
 	"github.com/weplanx/collector/common"
 	"go.uber.org/zap"
 	"time"
 )
 
-type Option struct {
-	// 指标
-	Measurement string `json:"measurement"`
-	// 描述
-	Description string `json:"description"`
-}
-
 type App struct {
 	*common.Inject
 
 	options map[string]*Option
 	subs    map[string]*nats.Subscription
+}
+
+type Option struct {
+	// 日志标识
+	Key string `json:"key"`
+	// 描述
+	Description string `json:"description"`
 }
 
 // Initialize 初始化 App
@@ -36,61 +35,61 @@ func Initialize(i *common.Inject) (x *App) {
 }
 
 // 队列主题名称
-func (x *App) subject(measurement string) string {
-	return fmt.Sprintf(`%s.logs.%s`, x.Values.Namespace, measurement)
+func (x *App) subject(key string) string {
+	return fmt.Sprintf(`%s.logs.%s`, x.Values.Namespace, key)
 }
 
 // 队列名称
-func (x *App) queue(measurement string) string {
-	return fmt.Sprintf(`%s:logs:%s`, x.Values.Namespace, measurement)
+func (x *App) queue(key string) string {
+	return fmt.Sprintf(`%s:logs:%s`, x.Values.Namespace, key)
 }
 
 // Get 获取订阅
-func (x *App) Get(measurement string) *nats.Subscription {
-	return x.subs[measurement]
+func (x *App) Get(key string) *nats.Subscription {
+	return x.subs[key]
 }
 
 // Set 设置订阅配置
-func (x *App) Set(measurement string, option *Option, v *nats.Subscription) {
-	x.options[measurement] = option
-	x.subs[measurement] = v
+func (x *App) Set(key string, option *Option, v *nats.Subscription) {
+	x.options[key] = option
+	x.subs[key] = v
 }
 
 // Remove 移除订阅配置
-func (x *App) Remove(measurement string) {
-	delete(x.options, measurement)
-	delete(x.subs, measurement)
+func (x *App) Remove(key string) {
+	delete(x.options, key)
+	delete(x.subs, key)
 }
 
 // Run 启动服务
 func (x *App) Run() (err error) {
 	// 初始化日志主题
-	var objects []*nats.ObjectInfo
-	if objects, err = x.Store.List(); errors.Is(err, nats.ErrNoObjectsFound) {
+	var keys []string
+
+	if keys, err = x.KeyValue.Keys(); errors.Is(err, nats.ErrNoObjectsFound) {
 		if errors.Is(err, nats.ErrNoObjectsFound) {
-			objects = make([]*nats.ObjectInfo, 0)
+			keys = make([]string, 0)
 		} else {
 			return
 		}
 	}
-	for _, o := range objects {
-		measurement := o.Name
-		var b []byte
-		if b, err = x.Store.GetBytes(measurement); err != nil {
+	for _, key := range keys {
+		var entry nats.KeyValueEntry
+		if entry, err = x.KeyValue.Get(key); err != nil {
 			return
 		}
 		var option Option
-		if err = sonic.Unmarshal(b, &option); err != nil {
+		if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
 			x.Log.Error("解码失败",
-				zap.ByteString("data", b),
+				zap.ByteString("data", entry.Value()),
 				zap.Error(err),
 			)
 			return
 		}
-		if err = x.SetSubscribe(measurement, &option); err != nil {
+		if err = x.SetSubscribe(key, &option); err != nil {
 			x.Log.Error("订阅设置失败",
-				zap.String("measurement", measurement),
-				zap.String("subject", x.subject(option.Measurement)),
+				zap.String("key", key),
+				zap.String("subject", x.subject(option.Key)),
 				zap.Error(err),
 			)
 		}
@@ -99,43 +98,41 @@ func (x *App) Run() (err error) {
 	x.Log.Info("服务已启动")
 
 	// 订阅事件状态
-	var watch nats.ObjectWatcher
-	if watch, err = x.Store.Watch(); err != nil {
+	var watch nats.KeyWatcher
+	if watch, err = x.KeyValue.WatchAll(); err != nil {
 		return
 	}
-	current := time.Now()
-	for o := range watch.Updates() {
-		if o == nil || o.ModTime.Unix() < current.Unix() {
+	cur := time.Now()
+	for entry := range watch.Updates() {
+		if entry == nil || entry.Created().Unix() < cur.Unix() {
 			continue
 		}
-		measurement := o.Name
-		if !o.Deleted {
-			var b []byte
-			if b, err = x.Store.GetBytes(measurement); err != nil {
-				return
-			}
+		switch entry.Operation().String() {
+		case "KeyValuePutOp":
 			var option Option
-			if err = sonic.Unmarshal(b, &option); err != nil {
+			if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
 				x.Log.Error("解码失败",
-					zap.ByteString("data", b),
+					zap.ByteString("data", entry.Value()),
 					zap.Error(err),
 				)
 				return
 			}
-			if err := x.SetSubscribe(measurement, &option); err != nil {
+			if err := x.SetSubscribe(entry.Key(), &option); err != nil {
 				x.Log.Error("订阅设置失败",
-					zap.String("measurement", measurement),
-					zap.String("subject", x.subject(option.Measurement)),
+					zap.String("key", entry.Key()),
+					zap.String("subject", x.subject(option.Key)),
 					zap.Error(err),
 				)
 			}
-		} else {
-			if err := x.RemoveSubscribe(measurement); err != nil {
+			break
+		case "KeyValueDeleteOp":
+			if err := x.RemoveSubscribe(entry.Key()); err != nil {
 				x.Log.Error("订阅移除失败",
-					zap.String("measurement", measurement),
+					zap.String("key", entry.Key()),
 					zap.Error(err),
 				)
 			}
+			break
 		}
 	}
 
@@ -143,10 +140,12 @@ func (x *App) Run() (err error) {
 }
 
 // SetSubscribe 订阅设置
-func (x *App) SetSubscribe(measurement string, option *Option) (err error) {
+func (x *App) SetSubscribe(key string, option *Option) (err error) {
 	var sub *nats.Subscription
-	if sub, err = x.Js.QueueSubscribe(x.subject(measurement), x.queue(measurement), func(msg *nats.Msg) {
-		if err = x.Push(measurement, msg); err != nil {
+	if sub, err = x.JetStream.QueueSubscribe(x.subject(key), x.queue(key), func(msg *nats.Msg) {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err = x.Push(ctx, key, msg); err != nil {
 			x.Log.Error("日志写入失败",
 				zap.Any("data", msg.Data),
 				zap.Error(err),
@@ -155,10 +154,10 @@ func (x *App) SetSubscribe(measurement string, option *Option) (err error) {
 	}, nats.ManualAck()); err != nil {
 		return
 	}
-	x.Set(measurement, option, sub)
+	x.Set(key, option, sub)
 	x.Log.Info("订阅设置成功",
-		zap.String("measurement", measurement),
-		zap.String("subject", x.subject(option.Measurement)),
+		zap.String("key", key),
+		zap.String("subject", x.subject(option.Key)),
 	)
 	return
 }
@@ -176,16 +175,16 @@ func (x *App) RemoveSubscribe(measurement string) (err error) {
 }
 
 type Payload struct {
-	// 标签
-	Tags map[string]string `json:"tags"`
-	// 字段
-	Fields map[string]interface{} `json:"fields"`
+	// 元数据
+	Metadata map[string]string `bson:"metadata" json:"metadata"`
+	// 日志
+	Data map[string]interface{} `bson:"data" json:"data"`
 	// 时间
-	Time time.Time `json:"time"`
+	Timestamp time.Time `bson:"timestamp" json:"timestamp"`
 }
 
-// Push 推送日志
-func (x *App) Push(measurement string, msg *nats.Msg) (err error) {
+// Push 数据推送
+func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 	var payload Payload
 	if err = sonic.Unmarshal(msg.Data, &payload); err != nil {
 		return
@@ -195,15 +194,8 @@ func (x *App) Push(measurement string, msg *nats.Msg) (err error) {
 		zap.Any("data", payload),
 		zap.Error(err),
 	)
-	api := x.Influx.WriteAPIBlocking(x.Values.Influx.Org, x.Values.Namespace)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-	if err = api.WritePoint(ctx, influxdb2.NewPoint(
-		measurement,
-		payload.Tags,
-		payload.Fields,
-		payload.Time,
-	)); err != nil {
+	if _, err = x.Db.Collection(key).
+		InsertOne(ctx, payload); err != nil {
 		msg.Nak()
 		return
 	}
