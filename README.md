@@ -7,7 +7,9 @@
 
 The log collection service subscribes to the same namespace as the [Transfer](https://github.com/weplanx/transfer) transfer client based on NATS JetStream, and automatically performs configuration scheduling and log system writing
 
-- Technical Documentation：[Yuque](https://www.yuque.com/kainonly/weplanx/collector)
+- Documentation：[Yuque](https://www.yuque.com/kainonly/weplanx/collector)
+
+![](/yuque_diagram.jpg)
 
 ## License
 

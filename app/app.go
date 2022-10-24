@@ -194,7 +194,7 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 		zap.Any("data", payload),
 		zap.Error(err),
 	)
-	if _, err = x.Db.Collection(key).
+	if _, err = x.Db.Collection(fmt.Sprintf(`%s_lgos`, key)).
 		InsertOne(ctx, payload); err != nil {
 		msg.Nak()
 		return
