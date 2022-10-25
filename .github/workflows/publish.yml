@@ -1,4 +1,4 @@
-name: 自动部署
+name: 发布
 
 on:
   release:
@@ -73,10 +73,3 @@ jobs:
           dst: |
             ${{ env.TCR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.TCR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{steps.meta.outputs.version}}
-
-      - name: Kubernetes 滚动更新
-        uses: steebchen/kubectl@v2.0.0
-        with:
-          config: ${{ secrets.KUBE_CONFIG }}
-          version: v1.23.1
-          command: patch deployment collector --patch "$(sed "s/\${tag}/${{steps.meta.outputs.version}}/" < ./config/patch.yml)"
