@@ -117,6 +117,7 @@ func (x *App) Run() (err error) {
 				)
 				return
 			}
+			time.Sleep(3 * time.Second)
 			if err := x.SetSubscribe(entry.Key(), &option); err != nil {
 				x.Log.Error("订阅设置失败",
 					zap.String("key", entry.Key()),
@@ -126,6 +127,7 @@ func (x *App) Run() (err error) {
 			}
 			break
 		case "KeyValueDeleteOp":
+			time.Sleep(3 * time.Second)
 			if err := x.RemoveSubscribe(entry.Key()); err != nil {
 				x.Log.Error("订阅移除失败",
 					zap.String("key", entry.Key()),
@@ -194,7 +196,8 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 		zap.Any("data", payload),
 		zap.Error(err),
 	)
-	if _, err = x.Db.Collection(fmt.Sprintf(`%s_lgos`, key)).
+	coll := fmt.Sprintf(`%s_logs`, key)
+	if _, err = x.Db.Collection(coll).
 		InsertOne(ctx, payload); err != nil {
 		msg.Nak()
 		return
