@@ -10,6 +10,7 @@ import (
 	"github.com/weplanx/collector/common"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.uber.org/zap"
 	"os"
 	"strings"
@@ -64,7 +65,9 @@ func UseMongoDB(values *common.Values) (*mongo.Client, error) {
 // 配置文档 https://www.mongodb.com/docs/drivers/go/current/
 // https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo
 func UseDatabase(values *common.Values, client *mongo.Client) (db *mongo.Database) {
-	return client.Database(values.Namespace)
+	option := options.Database().
+		SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
+	return client.Database(values.Namespace, option)
 }
 
 // UseNats 初始化 Nats

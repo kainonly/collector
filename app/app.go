@@ -14,11 +14,11 @@ import (
 type App struct {
 	*common.Inject
 
-	options map[string]*Option
+	options map[string]*LogOption
 	subs    map[string]*nats.Subscription
 }
 
-type Option struct {
+type LogOption struct {
 	// 日志标识
 	Key string `json:"key"`
 	// 描述
@@ -29,7 +29,7 @@ type Option struct {
 func Initialize(i *common.Inject) (x *App) {
 	return &App{
 		Inject:  i,
-		options: make(map[string]*Option),
+		options: make(map[string]*LogOption),
 		subs:    make(map[string]*nats.Subscription),
 	}
 }
@@ -50,7 +50,7 @@ func (x *App) Get(key string) *nats.Subscription {
 }
 
 // Set 设置订阅配置
-func (x *App) Set(key string, option *Option, v *nats.Subscription) {
+func (x *App) Set(key string, option *LogOption, v *nats.Subscription) {
 	x.options[key] = option
 	x.subs[key] = v
 }
@@ -78,7 +78,7 @@ func (x *App) Run() (err error) {
 		if entry, err = x.KeyValue.Get(key); err != nil {
 			return
 		}
-		var option Option
+		var option LogOption
 		if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
 			x.Log.Error("解码失败",
 				zap.ByteString("data", entry.Value()),
@@ -109,7 +109,7 @@ func (x *App) Run() (err error) {
 		}
 		switch entry.Operation().String() {
 		case "KeyValuePutOp":
-			var option Option
+			var option LogOption
 			if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
 				x.Log.Error("解码失败",
 					zap.ByteString("data", entry.Value()),
@@ -142,7 +142,7 @@ func (x *App) Run() (err error) {
 }
 
 // SetSubscribe 订阅设置
-func (x *App) SetSubscribe(key string, option *Option) (err error) {
+func (x *App) SetSubscribe(key string, option *LogOption) (err error) {
 	var sub *nats.Subscription
 	if sub, err = x.JetStream.QueueSubscribe(x.subject(key), x.queue(key), func(msg *nats.Msg) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
