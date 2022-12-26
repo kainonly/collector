@@ -5,11 +5,8 @@
 [![Release](https://img.shields.io/github/v/release/weplanx/collector.svg?style=flat-square)](https://github.com/weplanx/collector)
 [![GitHub license](https://img.shields.io/github/license/weplanx/collector?style=flat-square)](https://raw.githubusercontent.com/weplanx/collector/main/LICENSE)
 
-The log collection service subscribes to the same namespace as the [Transfer](https://github.com/weplanx/transfer) transfer client based on NATS JetStream, and automatically performs configuration scheduling and log system writing
-
-- Documentation：[Yuque](https://www.yuque.com/kainonly/weplanx/collector)
-
-![](yuque_diagram.jpg)
+The log collection service subscribes to the same namespace as the [Transfer](https://github.com/weplanx/transfer)
+transfer client based on NATS JetStream, and automatically performs configuration scheduling and log system writing
 
 ## License
 

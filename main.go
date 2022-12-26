@@ -8,6 +8,7 @@ import (
 
 func main() {
 	app, err := bootstrap.NewApp()
+
 	if err != nil {
 		panic(err)
 	}
