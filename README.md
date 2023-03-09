@@ -6,8 +6,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/weplanx/collector?style=flat-square)](https://goreportcard.com/report/github.com/weplanx/collector)
 [![GitHub license](https://img.shields.io/github/license/weplanx/collector?style=flat-square)](https://raw.githubusercontent.com/weplanx/collector/main/LICENSE)
 
-The log collection service subscribes to the same namespace as the [Transfer](https://github.com/weplanx/transfer)
-transfer client based on NATS JetStream, and automatically performs configuration scheduling and log system writing
+The collector service for subscribing to the stream queue and then writing to the log collection.
 
 ## License
 
