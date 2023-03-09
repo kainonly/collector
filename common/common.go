@@ -15,20 +15,12 @@ type Inject struct {
 }
 
 type Values struct {
-	// 命名空间
 	Namespace string `env:"NAMESPACE,required"`
-
-	// MongoDB 连接 Uri
-	Database string `env:"DATABASE,required"`
-
-	// NATS 配置
-	Nats `envPrefix:"NATS_"`
+	Database  string `env:"DATABASE,required"`
+	Nats      `envPrefix:"NATS_"`
 }
 
 type Nats struct {
-	// Nats 连接地址
 	Hosts []string `env:"HOSTS,required" envSeparator:","`
-
-	// Nats Nkey 认证
-	Nkey string `env:"NKEY,required"`
+	Nkey  string   `env:"NKEY,required"`
 }

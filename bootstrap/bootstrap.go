@@ -27,7 +27,6 @@ var Provides = wire.NewSet(
 	UseKeyValue,
 )
 
-// LoadStaticValues 加载静态配置
 func LoadStaticValues() (values *common.Values, err error) {
 	values = new(common.Values)
 	if err = env.Parse(values); err != nil {
@@ -36,8 +35,7 @@ func LoadStaticValues() (values *common.Values, err error) {
 	return
 }
 
-// UseZap 初始日志
-// 说明 https://pkg.go.dev/go.uber.org/zap
+// https://pkg.go.dev/go.uber.org/zap
 func UseZap() (log *zap.Logger, err error) {
 	if os.Getenv("MODE") != "release" {
 		if log, err = zap.NewDevelopment(); err != nil {
@@ -51,8 +49,7 @@ func UseZap() (log *zap.Logger, err error) {
 	return
 }
 
-// UseMongoDB 初始化 MongoDB
-// 配置文档 https://www.mongodb.com/docs/drivers/go/current/
+// https://www.mongodb.com/docs/drivers/go/current/
 // https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo
 func UseMongoDB(values *common.Values) (*mongo.Client, error) {
 	return mongo.Connect(
@@ -61,8 +58,7 @@ func UseMongoDB(values *common.Values) (*mongo.Client, error) {
 	)
 }
 
-// UseDatabase 初始化数据库
-// 配置文档 https://www.mongodb.com/docs/drivers/go/current/
+// https://www.mongodb.com/docs/drivers/go/current/
 // https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo
 func UseDatabase(values *common.Values, client *mongo.Client) (db *mongo.Database) {
 	option := options.Database().
@@ -70,8 +66,7 @@ func UseDatabase(values *common.Values, client *mongo.Client) (db *mongo.Databas
 	return client.Database(values.Namespace, option)
 }
 
-// UseNats 初始化 Nats
-// 配置文档 https://docs.nats.io/using-nats/developer
+// https://docs.nats.io/using-nats/developer
 // SDK https://github.com/nats-io/nats.go
 func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 	var kp nkeys.KeyPair
@@ -84,7 +79,7 @@ func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 		return
 	}
 	if !nkeys.IsValidPublicUserKey(pub) {
-		return nil, fmt.Errorf("nkey 验证失败")
+		return nil, fmt.Errorf("nkey verification failed")
 	}
 	if nc, err = nats.Connect(
 		strings.Join(values.Nats.Hosts, ","),
@@ -101,14 +96,12 @@ func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 	return
 }
 
-// UseJetStream 初始化流
-// 说明 https://docs.nats.io/using-nats/developer/develop_jetstream
+// https://docs.nats.io/using-nats/developer/develop_jetstream
 func UseJetStream(nc *nats.Conn) (nats.JetStreamContext, error) {
 	return nc.JetStream(nats.PublishAsyncMaxPending(256))
 }
 
-// UseKeyValue 初始分布配置
-// 说明 https://docs.nats.io/using-nats/developer/develop_jetstream/kv
+// https://docs.nats.io/using-nats/developer/develop_jetstream/kv
 func UseKeyValue(values *common.Values, js nats.JetStreamContext) (nats.KeyValue, error) {
 	return js.CreateKeyValue(&nats.KeyValueConfig{
 		Bucket: fmt.Sprintf(`%s_logs`, values.Namespace),
