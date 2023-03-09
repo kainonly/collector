@@ -19,8 +19,8 @@ type App struct {
 }
 
 type LogOption struct {
-	Key         string `json:"key"`
-	Description string `json:"description"`
+	Key         string `msgpack:"key"`
+	Description string `msgpack:"description"`
 }
 
 func Initialize(i *common.Inject) (x *App) {
