@@ -7,7 +7,9 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/common"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
+	"strings"
 	"time"
 )
 
@@ -165,9 +167,9 @@ func (x *App) RemoveSubscribe(measurement string) (err error) {
 }
 
 type Payload struct {
-	Metadata  map[string]interface{} `bson:"metadata" msgpack:"metadata"`
-	Data      map[string]interface{} `bson:"data" msgpack:"data"`
-	Timestamp time.Time              `bson:"timestamp" msgpack:"timestamp"`
+	Timestamp time.Time              `msgpack:"timestamp"`
+	Data      map[string]interface{} `msgpack:"data"`
+	Format    map[string]interface{} `msgpack:"format"`
 }
 
 func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
@@ -181,11 +183,15 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 		zap.Error(err),
 	)
 	name := fmt.Sprintf(`%s_logs`, key)
-	logdata := payload.Data
-	logdata["timestamp"] = payload.Timestamp
-	logdata["metadata"] = payload.Metadata
+	data := payload.Data
+	if err = x.Transform(data, payload.Format); err != nil {
+		msg.Nak()
+		return
+	}
+	data["timestamp"] = payload.Timestamp
+
 	if _, err = x.Db.Collection(name).
-		InsertOne(ctx, logdata); err != nil {
+		InsertOne(ctx, data); err != nil {
 		msg.Nak()
 		return
 	}
@@ -193,5 +199,51 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 		zap.Any("payload", payload),
 	)
 	msg.Ack()
+	return
+}
+
+func (x *App) Transform(data map[string]interface{}, format map[string]interface{}) (err error) {
+	for path, spec := range format {
+		keys, cursor := strings.Split(path, "."), data
+		n := len(keys) - 1
+		for _, key := range keys[:n] {
+			if v, ok := cursor[key].(map[string]interface{}); ok {
+				cursor = v
+			}
+		}
+		key := keys[n]
+		if cursor[key] == nil {
+			continue
+		}
+		switch spec {
+		case "oid":
+			if cursor[key], err = primitive.ObjectIDFromHex(cursor[key].(string)); err != nil {
+				return
+			}
+			break
+
+		case "oids":
+			oids := cursor[key].([]interface{})
+			for i, id := range oids {
+				if oids[i], err = primitive.ObjectIDFromHex(id.(string)); err != nil {
+					return
+				}
+			}
+			break
+
+		case "date":
+			if cursor[key], err = time.Parse(time.RFC1123, cursor[key].(string)); err != nil {
+				return
+			}
+			break
+
+		case "timestamp":
+			if cursor[key], err = time.Parse(time.RFC3339, cursor[key].(string)); err != nil {
+				return
+			}
+			break
+
+		}
+	}
 	return
 }
