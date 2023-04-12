@@ -212,7 +212,7 @@ func (x *App) Transform(data map[string]interface{}, format map[string]interface
 			}
 		}
 		key := keys[n]
-		if cursor[key] == nil {
+		if cursor[key] == nil || cursor[key] == "" {
 			continue
 		}
 		switch spec {
