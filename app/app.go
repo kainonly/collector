@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/common"
@@ -185,6 +186,7 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 		zap.Error(err),
 	)
 	data := payload.Data
+	data["timestamp"] = payload.Timestamp
 	if err = x.Transform(data, payload.Format); err != nil {
 		if _, err = x.Db.Collection(fmt.Sprintf(`%s_fail`, key)).
 			InsertOne(ctx, data); err != nil {
@@ -194,7 +196,6 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 		msg.Ack()
 		return
 	}
-	data["timestamp"] = payload.Timestamp
 	if _, err = x.Db.Collection(key).
 		InsertOne(ctx, data); err != nil {
 		msg.NakWithDelay(time.Minute * 30)
@@ -235,7 +236,7 @@ func (x *App) Pipe(input M, paths []string, kind interface{}) (err error) {
 		cursor = cursor.(M)[path]
 	}
 	key := paths[n]
-	if cursor == nil || cursor.(M)[key] == nil {
+	if cursor == nil || cursor.(M)[key] == nil || cursor.(M)[key] == "" {
 		return
 	}
 	unknow := cursor.(M)[key]
@@ -282,6 +283,11 @@ func (x *App) Pipe(input M, paths []string, kind interface{}) (err error) {
 			}
 		}
 		data = timestamps
+		break
+	case "json":
+		if err = sonic.Unmarshal(unknow.([]byte), &data); err != nil {
+			return
+		}
 		break
 	}
 	cursor.(M)[key] = data
