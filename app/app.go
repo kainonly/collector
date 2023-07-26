@@ -186,13 +186,18 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 	)
 	data := payload.Data
 	if err = x.Transform(data, payload.Format); err != nil {
-		msg.Nak()
+		if _, err = x.Db.Collection(fmt.Sprintf(`%s_fail`, key)).
+			InsertOne(ctx, data); err != nil {
+			msg.NakWithDelay(time.Minute * 30)
+			return
+		}
+		msg.Ack()
 		return
 	}
 	data["timestamp"] = payload.Timestamp
 	if _, err = x.Db.Collection(key).
 		InsertOne(ctx, data); err != nil {
-		msg.Nak()
+		msg.NakWithDelay(time.Minute * 30)
 		return
 	}
 	x.Log.Debug("Push",
