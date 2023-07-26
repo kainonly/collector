@@ -25,6 +25,8 @@ type LogOption struct {
 	Description string `msgpack:"description"`
 }
 
+type M = map[string]interface{}
+
 func Initialize(i *common.Inject) (x *App) {
 	return &App{
 		Inject:  i,
@@ -167,9 +169,9 @@ func (x *App) RemoveSubscribe(measurement string) (err error) {
 }
 
 type Payload struct {
-	Timestamp time.Time              `msgpack:"timestamp"`
-	Data      map[string]interface{} `msgpack:"data"`
-	Format    map[string]interface{} `msgpack:"format"`
+	Timestamp time.Time `msgpack:"timestamp"`
+	Data      M         `msgpack:"data"`
+	Format    M         `msgpack:"format"`
 }
 
 func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
@@ -182,14 +184,13 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 		zap.Any("data", payload),
 		zap.Error(err),
 	)
-	name := fmt.Sprintf(`%s_logs`, key)
 	data := payload.Data
 	if err = x.Transform(data, payload.Format); err != nil {
 		msg.Nak()
 		return
 	}
 	data["timestamp"] = payload.Timestamp
-	if _, err = x.Db.Collection(name).
+	if _, err = x.Db.Collection(key).
 		InsertOne(ctx, data); err != nil {
 		msg.Nak()
 		return
@@ -201,48 +202,83 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 	return
 }
 
-func (x *App) Transform(data map[string]interface{}, format map[string]interface{}) (err error) {
-	for path, spec := range format {
-		keys, cursor := strings.Split(path, "."), data
-		n := len(keys) - 1
-		for _, key := range keys[:n] {
-			if v, ok := cursor[key].(map[string]interface{}); ok {
-				cursor = v
-			}
+func (x *App) Transform(data M, rules M) (err error) {
+	for key, value := range rules {
+		paths := strings.Split(key, ".")
+		if err = x.Pipe(data, paths, value); err != nil {
+			return
 		}
-		key := keys[n]
-		if cursor[key] == nil || cursor[key] == "" {
-			continue
-		}
-		switch spec {
-		case "oid":
-			if cursor[key], err = primitive.ObjectIDFromHex(cursor[key].(string)); err != nil {
-				return
-			}
-			break
+	}
+	return
+}
 
-		case "oids":
-			oids := cursor[key].([]interface{})
-			for i, id := range oids {
-				if oids[i], err = primitive.ObjectIDFromHex(id.(string)); err != nil {
+func (x *App) Pipe(input M, paths []string, kind interface{}) (err error) {
+	var cursor interface{} = input
+	n := len(paths) - 1
+	for i, path := range paths[:n] {
+		if path == "$" {
+			for _, item := range cursor.([]interface{}) {
+				if err = x.Pipe(item.(M), paths[i+1:], kind); err != nil {
 					return
 				}
 			}
-			break
-
-		case "date":
-			if cursor[key], err = time.Parse(time.RFC1123, cursor[key].(string)); err != nil {
-				return
-			}
-			break
-
-		case "timestamp":
-			if cursor[key], err = time.Parse(time.RFC3339, cursor[key].(string)); err != nil {
-				return
-			}
-			break
-
+			return
 		}
+		if cursor.(M)[path] == nil {
+			return
+		}
+		cursor = cursor.(M)[path]
 	}
+	key := paths[n]
+	if cursor == nil || cursor.(M)[key] == nil {
+		return
+	}
+	unknow := cursor.(M)[key]
+	var data interface{}
+	switch kind {
+	case "oid":
+		if data, err = primitive.ObjectIDFromHex(unknow.(string)); err != nil {
+			return
+		}
+		break
+	case "oids":
+		oids := unknow.([]interface{})
+		for i, id := range oids {
+			if oids[i], err = primitive.ObjectIDFromHex(id.(string)); err != nil {
+				return
+			}
+		}
+		data = oids
+		break
+	case "date":
+		if data, err = time.Parse(time.RFC1123, unknow.(string)); err != nil {
+			return
+		}
+		break
+	case "dates":
+		dates := unknow.([]interface{})
+		for i, date := range dates {
+			if dates[i], err = time.Parse(time.RFC1123, date.(string)); err != nil {
+				return
+			}
+		}
+		data = dates
+		break
+	case "timestamp":
+		if data, err = time.Parse(time.RFC3339, unknow.(string)); err != nil {
+			return
+		}
+		break
+	case "timestamps":
+		timestamps := unknow.([]interface{})
+		for i, timestamp := range timestamps {
+			if timestamps[i], err = time.Parse(time.RFC3339, timestamp.(string)); err != nil {
+				return
+			}
+		}
+		data = timestamps
+		break
+	}
+	cursor.(M)[key] = data
 	return
 }

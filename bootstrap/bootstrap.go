@@ -54,7 +54,7 @@ func UseZap() (log *zap.Logger, err error) {
 func UseMongoDB(values *common.Values) (*mongo.Client, error) {
 	return mongo.Connect(
 		context.TODO(),
-		options.Client().ApplyURI(values.Database),
+		options.Client().ApplyURI(values.Database.Url),
 	)
 }
 
@@ -63,7 +63,7 @@ func UseMongoDB(values *common.Values) (*mongo.Client, error) {
 func UseDatabase(values *common.Values, client *mongo.Client) (db *mongo.Database) {
 	option := options.Database().
 		SetWriteConcern(writeconcern.Majority())
-	return client.Database(values.Namespace, option)
+	return client.Database(values.Database.Name, option)
 }
 
 // https://docs.nats.io/using-nats/developer

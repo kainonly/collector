@@ -16,8 +16,13 @@ type Inject struct {
 
 type Values struct {
 	Namespace string `env:"NAMESPACE,required"`
-	Database  string `env:"DATABASE,required"`
+	Database  `envPrefix:"DATABASE_"`
 	Nats      `envPrefix:"NATS_"`
+}
+
+type Database struct {
+	Url  string `env:"URL,required"`
+	Name string `env:"NAME,required"`
 }
 
 type Nats struct {
