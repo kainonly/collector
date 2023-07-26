@@ -189,7 +189,6 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 		return
 	}
 	data["timestamp"] = payload.Timestamp
-
 	if _, err = x.Db.Collection(name).
 		InsertOne(ctx, data); err != nil {
 		msg.Nak()

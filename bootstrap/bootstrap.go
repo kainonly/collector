@@ -62,7 +62,7 @@ func UseMongoDB(values *common.Values) (*mongo.Client, error) {
 // https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo
 func UseDatabase(values *common.Values, client *mongo.Client) (db *mongo.Database) {
 	option := options.Database().
-		SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
+		SetWriteConcern(writeconcern.Majority())
 	return client.Database(values.Namespace, option)
 }
 
