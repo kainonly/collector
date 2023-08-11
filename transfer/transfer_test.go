@@ -6,7 +6,6 @@ import (
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/weplanx/collector/common"
 	"github.com/weplanx/collector/transfer"
 	"os"
 	"sync"
@@ -70,7 +69,7 @@ func UseNats(ctx context.Context) (err error) {
 }
 
 func TestTransfer_Set(t *testing.T) {
-	err := client.Set(context.TODO(), common.Option{
+	err := client.Set(context.TODO(), transfer.StreamOption{
 		Key:         "system",
 		Description: "system example",
 	})
@@ -78,7 +77,7 @@ func TestTransfer_Set(t *testing.T) {
 }
 
 func TestTransfer_Update(t *testing.T) {
-	err := client.Update(context.TODO(), common.Option{
+	err := client.Update(context.TODO(), transfer.StreamOption{
 		Key:         "system",
 		Description: "system example 123",
 	})
@@ -104,7 +103,7 @@ func TestTransfer_Publish(t *testing.T) {
 		"msg":  "hi",
 	}
 	go js.QueueSubscribe(subjectName, queueName, func(msg *nats.Msg) {
-		var payload common.Payload
+		var payload transfer.Payload
 		if err := msgpack.Unmarshal(msg.Data, &payload); err != nil {
 			t.Error(err)
 		}
@@ -113,7 +112,7 @@ func TestTransfer_Publish(t *testing.T) {
 		assert.Equal(t, now.UnixNano(), payload.Timestamp.UnixNano())
 		wg.Done()
 	})
-	err := client.Publish(context.TODO(), "system", common.Payload{
+	err := client.Publish(context.TODO(), "system", transfer.Payload{
 		Data:      data,
 		Timestamp: now,
 	})

@@ -103,7 +103,7 @@ if client, err = transfer.New(
 }
 
 // Set logger
-err := client.Set(context.TODO(), transfer.LogOption{
+err := client.Set(context.TODO(), transfer.StreamOption{
 	Key:         "system",
 	Description: "system beta",
 })
@@ -113,13 +113,20 @@ result, err := client.Get("system")
 
 // Publish log data
 err := client.Publish(context.TODO(), "system", transfer.Payload{
-	Metadata: map[string]interface{}{
-		"id": 1,
-	},
-	Data: map[string]interface{}{
-		"msg": "123456",
-	},
-	Timestamp: time.Now(),
+    Timestamp: time.Now(),
+    Data: map[string]interface{}{
+        "metadata": map[string]interface{}{
+            "method":    method,
+            "path":      string(c.Request.Path()),
+            "user_id":   userId,
+            "client_ip": c.ClientIP(),
+        },
+        "params":     string(c.Request.QueryString()),
+        "body":       c.Request.Body(),
+        "status":     c.Response.StatusCode(),
+        "user_agent": string(c.Request.Header.UserAgent()),
+    },
+    XData: map[string]interface{}{},
 })
 
 // Remove logger

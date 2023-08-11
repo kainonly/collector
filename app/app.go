@@ -8,6 +8,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/common"
+	"github.com/weplanx/collector/transfer"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 	"strings"
@@ -17,7 +18,7 @@ import (
 type App struct {
 	*common.Inject
 
-	options map[string]*common.Option
+	options map[string]*transfer.StreamOption
 	subs    map[string]*nats.Subscription
 }
 
@@ -26,7 +27,7 @@ type M = map[string]interface{}
 func Initialize(i *common.Inject) (x *App) {
 	return &App{
 		Inject:  i,
-		options: make(map[string]*common.Option),
+		options: make(map[string]*transfer.StreamOption),
 		subs:    make(map[string]*nats.Subscription),
 	}
 }
@@ -43,7 +44,7 @@ func (x *App) Get(key string) *nats.Subscription {
 	return x.subs[key]
 }
 
-func (x *App) Set(key string, option *common.Option, v *nats.Subscription) {
+func (x *App) Set(key string, option *transfer.StreamOption, v *nats.Subscription) {
 	x.options[key] = option
 	x.subs[key] = v
 }
@@ -68,7 +69,7 @@ func (x *App) Run() (err error) {
 		if entry, err = x.KeyValue.Get(key); err != nil {
 			return
 		}
-		var option common.Option
+		var option transfer.StreamOption
 		if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
 			x.Log.Error("Decoding",
 				zap.ByteString("data", entry.Value()),
@@ -99,7 +100,7 @@ func (x *App) Run() (err error) {
 		}
 		switch entry.Operation().String() {
 		case "KeyValuePutOp":
-			var option common.Option
+			var option transfer.StreamOption
 			if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
 				x.Log.Error("Decoding",
 					zap.ByteString("data", entry.Value()),
@@ -131,7 +132,7 @@ func (x *App) Run() (err error) {
 	return
 }
 
-func (x *App) SetSubscribe(key string, option *common.Option) (err error) {
+func (x *App) SetSubscribe(key string, option *transfer.StreamOption) (err error) {
 	var sub *nats.Subscription
 	if sub, err = x.JetStream.QueueSubscribe(x.SubjectName(key), x.QueueName(key), func(msg *nats.Msg) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -165,7 +166,7 @@ func (x *App) RemoveSubscribe(measurement string) (err error) {
 }
 
 func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
-	var payload common.Payload
+	var payload transfer.Payload
 	if err = msgpack.Unmarshal(msg.Data, &payload); err != nil {
 		return
 	}
@@ -176,7 +177,7 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 	)
 	data := payload.Data
 	data["timestamp"] = payload.Timestamp
-	if err = x.Transform(data, payload.Format); err != nil {
+	if err = x.Transform(data, payload.XData); err != nil {
 		if _, err = x.Db.Collection(fmt.Sprintf(`%s_fail`, key)).
 			InsertOne(ctx, data); err != nil {
 			msg.NakWithDelay(time.Minute * 30)
