@@ -52,7 +52,7 @@ spec:
         app: collector
     spec:
       containers:
-        - image: ccr.ccs.tencentyun.com/weplanx/collector:v2.0.0
+        - image: ccr.ccs.tencentyun.com/weplanx/collector:v1.10.0
           imagePullPolicy: Always
           name: collector
           env:
