@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
-	"time"
+	"github.com/weplanx/collector/common"
 )
 
 type Transfer struct {
@@ -41,18 +41,13 @@ func SetJetStream(v nats.JetStreamContext) Option {
 	}
 }
 
-type LogOption struct {
-	Key         string `msgpack:"key"`
-	Description string `msgpack:"description"`
-}
-
 func (x *Transfer) Get(key string) (result map[string]interface{}, err error) {
 	result = make(map[string]interface{})
 	var entry nats.KeyValueEntry
 	if entry, err = x.KeyValue.Get(key); err != nil {
 		return
 	}
-	var option LogOption
+	var option common.Option
 	if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
 		return
 	}
@@ -66,7 +61,7 @@ func (x *Transfer) Get(key string) (result map[string]interface{}, err error) {
 	return
 }
 
-func (x *Transfer) Set(ctx context.Context, option LogOption) (err error) {
+func (x *Transfer) Set(ctx context.Context, option common.Option) (err error) {
 	var b []byte
 	if b, err = msgpack.Marshal(option); err != nil {
 		return
@@ -90,7 +85,7 @@ func (x *Transfer) Set(ctx context.Context, option LogOption) (err error) {
 	return
 }
 
-func (x *Transfer) Update(ctx context.Context, option LogOption) (err error) {
+func (x *Transfer) Update(ctx context.Context, option common.Option) (err error) {
 	var b []byte
 	if b, err = msgpack.Marshal(option); err != nil {
 		return
@@ -122,13 +117,7 @@ func (x *Transfer) Remove(key string) (err error) {
 	return x.Js.DeleteStream(name)
 }
 
-type Payload struct {
-	Timestamp time.Time              `msgpack:"timestamp"`
-	Data      map[string]interface{} `msgpack:"data"`
-	Format    map[string]interface{} `msgpack:"format"`
-}
-
-func (x *Transfer) Publish(ctx context.Context, key string, payload Payload) (err error) {
+func (x *Transfer) Publish(ctx context.Context, key string, payload common.Payload) (err error) {
 	var b []byte
 	if b, err = msgpack.Marshal(payload); err != nil {
 		return

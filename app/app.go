@@ -17,13 +17,8 @@ import (
 type App struct {
 	*common.Inject
 
-	options map[string]*LogOption
+	options map[string]*common.Option
 	subs    map[string]*nats.Subscription
-}
-
-type LogOption struct {
-	Key         string `msgpack:"key"`
-	Description string `msgpack:"description"`
 }
 
 type M = map[string]interface{}
@@ -31,7 +26,7 @@ type M = map[string]interface{}
 func Initialize(i *common.Inject) (x *App) {
 	return &App{
 		Inject:  i,
-		options: make(map[string]*LogOption),
+		options: make(map[string]*common.Option),
 		subs:    make(map[string]*nats.Subscription),
 	}
 }
@@ -48,7 +43,7 @@ func (x *App) Get(key string) *nats.Subscription {
 	return x.subs[key]
 }
 
-func (x *App) Set(key string, option *LogOption, v *nats.Subscription) {
+func (x *App) Set(key string, option *common.Option, v *nats.Subscription) {
 	x.options[key] = option
 	x.subs[key] = v
 }
@@ -73,7 +68,7 @@ func (x *App) Run() (err error) {
 		if entry, err = x.KeyValue.Get(key); err != nil {
 			return
 		}
-		var option LogOption
+		var option common.Option
 		if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
 			x.Log.Error("Decoding",
 				zap.ByteString("data", entry.Value()),
@@ -104,7 +99,7 @@ func (x *App) Run() (err error) {
 		}
 		switch entry.Operation().String() {
 		case "KeyValuePutOp":
-			var option LogOption
+			var option common.Option
 			if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
 				x.Log.Error("Decoding",
 					zap.ByteString("data", entry.Value()),
@@ -136,7 +131,7 @@ func (x *App) Run() (err error) {
 	return
 }
 
-func (x *App) SetSubscribe(key string, option *LogOption) (err error) {
+func (x *App) SetSubscribe(key string, option *common.Option) (err error) {
 	var sub *nats.Subscription
 	if sub, err = x.JetStream.QueueSubscribe(x.SubjectName(key), x.QueueName(key), func(msg *nats.Msg) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -169,14 +164,8 @@ func (x *App) RemoveSubscribe(measurement string) (err error) {
 	return
 }
 
-type Payload struct {
-	Timestamp time.Time `msgpack:"timestamp"`
-	Data      M         `msgpack:"data"`
-	Format    M         `msgpack:"format"`
-}
-
 func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
-	var payload Payload
+	var payload common.Payload
 	if err = msgpack.Unmarshal(msg.Data, &payload); err != nil {
 		return
 	}
