@@ -52,31 +52,34 @@ spec:
         app: collector
     spec:
       containers:
-        - image: ccr.ccs.tencentyun.com/weplanx/collector:v1.6.0
+        - image: ccr.ccs.tencentyun.com/weplanx/collector:v2.0.0
           imagePullPolicy: Always
           name: collector
           env:
             - name: MODE
               value: release
+            - name: NAMESPACE
+              value: <*** your namespace ***>
             - name: NATS_HOSTS
               value: <*** your nats hosts ***>
             - name: NATS_NKEY
               value: <*** your nats nkey***>
-            - name: DATABASE
-              value: <*** your mongodb uri ***>
-            - name: NAMESPACE
-              value: <*** your namespace ***>
+            - name: DATABASE_URL
+              value: <*** your mongodb url ***>
+            - name: DATABASE_NAME
+              value: <*** your mongodb name ***>
 ```
 
 The environment variable of the service.
 
-| Parameter    | Description                                   |
-|--------------|-----------------------------------------------|
-| `MODE`       | Log level is production when set to `release` |
-| `NAMESPACE`  | Namespace for collector and transfer          |
-| `NATS_HOSTS` | Nats connection address                       |
-| `NATS_NKEY`  | Nats nkey auth                                |
-| `DATABASE`   | MongoDB uri                                   |
+| Parameter       | Description                                   |
+|-----------------|-----------------------------------------------|
+| `MODE`          | Log level is production when set to `release` |
+| `NAMESPACE`     | Namespace for collector and transfer          |
+| `NATS_HOSTS`    | Nats connection address                       |
+| `NATS_NKEY`     | Nats nkey auth                                |
+| `DATABASE_URL`  | MongoDB url                                   |
+| `DATABASE_NAME` | MongoDB database name                         |
 
 ## Transfer
 
@@ -91,21 +94,21 @@ A simple quick start case
 ```golang
 // Create the nats client and then create the jetstream context
 if js, err = nc.JetStream(nats.PublishAsyncMaxPending(256)); err != nil {
-	panic(err)
+panic(err)
 }
 
 // Create the transfer client
 if client, err = transfer.New(
-	transfer.SetNamespace("beta"),
-	transfer.SetJetStream(js),
+transfer.SetNamespace("beta"),
+transfer.SetJetStream(js),
 ); err != nil {
-	panic(err)
+panic(err)
 }
 
 // Set logger
 err := client.Set(context.TODO(), transfer.StreamOption{
-	Key:         "system",
-	Description: "system beta",
+Key:         "system",
+Description: "system beta",
 })
 
 // Get logger
@@ -113,20 +116,20 @@ result, err := client.Get("system")
 
 // Publish log data
 err := client.Publish(context.TODO(), "system", transfer.Payload{
-    Timestamp: time.Now(),
-    Data: map[string]interface{}{
-        "metadata": map[string]interface{}{
-            "method":    method,
-            "path":      string(c.Request.Path()),
-            "user_id":   userId,
-            "client_ip": c.ClientIP(),
-        },
-        "params":     string(c.Request.QueryString()),
-        "body":       c.Request.Body(),
-        "status":     c.Response.StatusCode(),
-        "user_agent": string(c.Request.Header.UserAgent()),
-    },
-    XData: map[string]interface{}{},
+Timestamp: time.Now(),
+Data: map[string]interface{}{
+"metadata": map[string]interface{}{
+"method":    method,
+"path":      string(c.Request.Path()),
+"user_id":   userId,
+"client_ip": c.ClientIP(),
+},
+"params":     string(c.Request.QueryString()),
+"body":       c.Request.Body(),
+"status":     c.Response.StatusCode(),
+"user_agent": string(c.Request.Header.UserAgent()),
+},
+XData: map[string]interface{}{},
 })
 
 // Remove logger
