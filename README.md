@@ -91,7 +91,7 @@ go get github.com/weplanx/collector
 
 A simple quick start case
 
-```golang
+```text
 // Create the nats client and then create the jetstream context
 if js, err = nc.JetStream(nats.PublishAsyncMaxPending(256)); err != nil {
 panic(err)
@@ -116,20 +116,20 @@ result, err := client.Get("system")
 
 // Publish log data
 err := client.Publish(context.TODO(), "system", transfer.Payload{
-Timestamp: time.Now(),
-Data: map[string]interface{}{
-"metadata": map[string]interface{}{
-"method":    method,
-"path":      string(c.Request.Path()),
-"user_id":   userId,
-"client_ip": c.ClientIP(),
-},
-"params":     string(c.Request.QueryString()),
-"body":       c.Request.Body(),
-"status":     c.Response.StatusCode(),
-"user_agent": string(c.Request.Header.UserAgent()),
-},
-XData: map[string]interface{}{},
+    Timestamp: time.Now(),
+    Data: map[string]interface{}{
+        "metadata": map[string]interface{}{
+            "method":    method,
+            "path":      string(c.Request.Path()),
+            "user_id":   userId,
+            "client_ip": c.ClientIP(),
+        },
+        "params":     string(c.Request.QueryString()),
+        "body":       c.Request.Body(),
+        "status":     c.Response.StatusCode(),
+        "user_agent": string(c.Request.Header.UserAgent()),
+    },
+    XData: map[string]interface{}{},
 })
 
 // Remove logger
