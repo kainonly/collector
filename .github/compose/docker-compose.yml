@@ -1,0 +1,23 @@
+version: "3"
+services:
+  nats-1:
+    image: nats:alpine
+    command: [ "-c","/etc/nats.conf" ]
+    volumes:
+      - "./nats-1.conf:/etc/nats.conf"
+    ports:
+      - "4222:4222"
+  nats-2:
+    image: nats:alpine
+    command: [ "-c","/etc/nats.conf" ]
+    volumes:
+      - "./nats-2.conf:/etc/nats.conf"
+    ports:
+      - "4223:4222"
+  nats-3:
+    image: nats:alpine
+    command: [ "-c","/etc/nats.conf" ]
+    volumes:
+      - "./nats-3.conf:/etc/nats.conf"
+    ports:
+      - "4224:4222"

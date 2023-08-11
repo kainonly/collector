@@ -6,7 +6,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/weplanx/collector?style=flat-square)](https://goreportcard.com/report/github.com/weplanx/collector)
 [![GitHub license](https://img.shields.io/github/license/weplanx/collector?style=flat-square)](https://raw.githubusercontent.com/weplanx/collector/main/LICENSE)
 
-The collector service for subscribing to the stream queue and then writing to the log collection.
+Queue stream transfer and logset collector service supporting weplanx
 
 ## License
 

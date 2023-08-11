@@ -8,6 +8,7 @@ require (
 	github.com/google/wire v0.5.0
 	github.com/nats-io/nats.go v1.28.0
 	github.com/nats-io/nkeys v0.4.4
+	github.com/stretchr/testify v1.8.4
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.mongodb.org/mongo-driver v1.12.1
 	go.uber.org/zap v1.25.0
@@ -16,6 +17,7 @@ require (
 require (
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
 	github.com/chenzhuoyu/iasm v0.9.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.5 // indirect
@@ -24,6 +26,8 @@ require (
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/nats-io/nats-server/v2 v2.9.21 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
@@ -37,4 +41,5 @@ require (
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
