@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"github.com/caarlos0/env/v6"
+	"github.com/caarlos0/env/v9"
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
@@ -14,7 +14,6 @@ import (
 	"go.uber.org/zap"
 	"os"
 	"strings"
-	"time"
 )
 
 var Provides = wire.NewSet(
@@ -35,7 +34,6 @@ func LoadStaticValues() (values *common.Values, err error) {
 	return
 }
 
-// https://pkg.go.dev/go.uber.org/zap
 func UseZap() (log *zap.Logger, err error) {
 	if os.Getenv("MODE") != "release" {
 		if log, err = zap.NewDevelopment(); err != nil {
@@ -49,8 +47,6 @@ func UseZap() (log *zap.Logger, err error) {
 	return
 }
 
-// https://www.mongodb.com/docs/drivers/go/current/
-// https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo
 func UseMongoDB(values *common.Values) (*mongo.Client, error) {
 	return mongo.Connect(
 		context.TODO(),
@@ -58,16 +54,12 @@ func UseMongoDB(values *common.Values) (*mongo.Client, error) {
 	)
 }
 
-// https://www.mongodb.com/docs/drivers/go/current/
-// https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo
 func UseDatabase(values *common.Values, client *mongo.Client) (db *mongo.Database) {
 	option := options.Database().
 		SetWriteConcern(writeconcern.Majority())
 	return client.Database(values.Database.Name, option)
 }
 
-// https://docs.nats.io/using-nats/developer
-// SDK https://github.com/nats-io/nats.go
 func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 	var kp nkeys.KeyPair
 	if kp, err = nkeys.FromSeed([]byte(values.Nats.Nkey)); err != nil {
@@ -83,9 +75,6 @@ func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 	}
 	if nc, err = nats.Connect(
 		strings.Join(values.Nats.Hosts, ","),
-		nats.MaxReconnects(5),
-		nats.ReconnectWait(2*time.Second),
-		nats.ReconnectJitter(500*time.Millisecond, 2*time.Second),
 		nats.Nkey(pub, func(nonce []byte) ([]byte, error) {
 			sig, _ := kp.Sign(nonce)
 			return sig, nil
@@ -96,12 +85,10 @@ func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 	return
 }
 
-// https://docs.nats.io/using-nats/developer/develop_jetstream
 func UseJetStream(nc *nats.Conn) (nats.JetStreamContext, error) {
 	return nc.JetStream(nats.PublishAsyncMaxPending(256))
 }
 
-// https://docs.nats.io/using-nats/developer/develop_jetstream/kv
 func UseKeyValue(values *common.Values, js nats.JetStreamContext) (nats.KeyValue, error) {
 	return js.CreateKeyValue(&nats.KeyValueConfig{
 		Bucket: fmt.Sprintf(`%s_logs`, values.Namespace),
