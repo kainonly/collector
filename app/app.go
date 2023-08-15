@@ -12,23 +12,21 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 	"strings"
+	"sync"
 	"time"
 )
 
 type App struct {
 	*common.Inject
-
-	options map[string]*transfer.StreamOption
-	subs    map[string]*nats.Subscription
+	M sync.Map
 }
 
 type M = map[string]interface{}
 
 func Initialize(i *common.Inject) (x *App) {
 	return &App{
-		Inject:  i,
-		options: make(map[string]*transfer.StreamOption),
-		subs:    make(map[string]*nats.Subscription),
+		Inject: i,
+		M:      sync.Map{},
 	}
 }
 
@@ -41,17 +39,18 @@ func (x *App) QueueName(key string) string {
 }
 
 func (x *App) Get(key string) *nats.Subscription {
-	return x.subs[key]
+	if value, ok := x.M.Load(key); ok {
+		return value.(*nats.Subscription)
+	}
+	return nil
 }
 
 func (x *App) Set(key string, option *transfer.StreamOption, v *nats.Subscription) {
-	x.options[key] = option
-	x.subs[key] = v
+	x.M.Store(key, v)
 }
 
 func (x *App) Remove(key string) {
-	delete(x.options, key)
-	delete(x.subs, key)
+	x.M.Delete(key)
 }
 
 func (x *App) Run() (err error) {
@@ -119,7 +118,7 @@ func (x *App) Run() (err error) {
 			break
 		case "KeyValueDeleteOp":
 			time.Sleep(3 * time.Second)
-			if err := x.RemoveSubscribe(entry.Key()); err != nil {
+			if err = x.RemoveSubscribe(entry.Key()); err != nil {
 				x.Log.Error("Subscription removed",
 					zap.String("key", entry.Key()),
 					zap.Error(err),
@@ -168,12 +167,16 @@ func (x *App) RemoveSubscribe(measurement string) (err error) {
 func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 	var payload transfer.Payload
 	if err = msgpack.Unmarshal(msg.Data, &payload); err != nil {
+		x.Log.Error("Decoding Failed",
+			zap.String("subject", msg.Subject),
+			zap.String("data", string(msg.Data)),
+			zap.Error(err),
+		)
 		return
 	}
 	x.Log.Debug("Decoding",
 		zap.String("subject", msg.Subject),
 		zap.Any("data", payload),
-		zap.Error(err),
 	)
 	data := payload.Data
 	data["timestamp"] = payload.Timestamp
