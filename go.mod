@@ -3,7 +3,7 @@ module github.com/weplanx/collector
 go 1.21
 
 require (
-	github.com/bytedance/sonic v1.10.0
+	github.com/bytedance/sonic v1.10.1
 	github.com/caarlos0/env/v9 v9.0.0
 	github.com/google/wire v0.5.0
 	github.com/nats-io/nats.go v1.28.0
@@ -27,7 +27,6 @@ require (
 	github.com/nats-io/nats-server/v2 v2.9.21 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
