@@ -16,8 +16,8 @@ Lightly queue stream transfer and distributed logset collector
 - A MongoDB, preferably with a version greater than 5.0, so that time series collections can be used.
 - Services can only work together under the same namespace.
 
-> The same namespace defines the database name for mongodb, `${namespace}_logs` for nats
-> key-value, `${namespace}:logs:${key}` for nats stream
+> The same namespace defines the database name for mongodb, **${namespace}_logs** for nats
+> key-value, **${namespace}:logs:${key}** for nats stream
 
 ## Collector
 
@@ -33,7 +33,7 @@ The collection needs to be managed manually and created with the name ${key}_log
 The main container images are:
 
 - ghcr.io/weplanx/collector:latest
-- ccr.ccs.tencentyun.com/weplanx/collector:latest
+- registry.cn-shenzhen.aliyuncs.com/weplanx/collector:latest
 
 The case will deploy the orchestration using Kubernetes, replicating the deployment (with modifications as needed).
 
@@ -52,7 +52,7 @@ spec:
         app: collector
     spec:
       containers:
-        - image: ccr.ccs.tencentyun.com/weplanx/collector:v1.10.0
+        - image: registry.cn-shenzhen.aliyuncs.com/weplanx/collector:latest
           imagePullPolicy: Always
           name: collector
           env:
@@ -91,24 +91,24 @@ go get github.com/weplanx/collector
 
 A simple quick start case
 
-```text
+```
 // Create the nats client and then create the jetstream context
 if js, err = nc.JetStream(nats.PublishAsyncMaxPending(256)); err != nil {
-panic(err)
+    panic(err)
 }
 
 // Create the transfer client
 if client, err = transfer.New(
-transfer.SetNamespace("beta"),
-transfer.SetJetStream(js),
+    transfer.SetNamespace("beta"),
+    transfer.SetJetStream(js),
 ); err != nil {
-panic(err)
+    panic(err)
 }
 
 // Set logger
 err := client.Set(context.TODO(), transfer.StreamOption{
-Key:         "system",
-Description: "system beta",
+    Key:         "system",
+    Description: "system beta",
 })
 
 // Get logger
