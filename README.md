@@ -81,7 +81,7 @@ The environment variable of the service.
 | `DATABASE_URL`  | MongoDB url                                   |
 | `DATABASE_NAME` | MongoDB database name                         |
 
-## Transfer
+## Client
 
 client for managing configuration, data transfer, and scheduling distribution collectors.
 
@@ -98,7 +98,7 @@ if js, err = nc.JetStream(nats.PublishAsyncMaxPending(256)); err != nil {
 }
 
 // Create the transfer client
-if client, err = transfer.New(
+if x, err = client.New(
     transfer.SetNamespace("beta"),
     transfer.SetJetStream(js),
 ); err != nil {
@@ -106,7 +106,7 @@ if client, err = transfer.New(
 }
 
 // Set logger
-err := client.Set(context.TODO(), transfer.StreamOption{
+err := x.Set(context.TODO(), client.StreamOption{
     Key:         "system",
     Description: "system beta",
 })
@@ -115,7 +115,7 @@ err := client.Set(context.TODO(), transfer.StreamOption{
 result, err := client.Get("system")
 
 // Publish log data
-err := client.Publish(context.TODO(), "system", transfer.Payload{
+err := x.Publish(context.TODO(), "system", client.Payload{
     Timestamp: time.Now(),
     Data: map[string]interface{}{
         "metadata": map[string]interface{}{
@@ -133,7 +133,7 @@ err := client.Publish(context.TODO(), "system", transfer.Payload{
 })
 
 // Remove logger
-err := client.Remove("system")
+err := x.Remove("system")
 ```
 
 ## License

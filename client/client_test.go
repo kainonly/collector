@@ -1,4 +1,4 @@
-package transfer_test
+package client_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/weplanx/collector/transfer"
+	"github.com/weplanx/collector/client"
 	"os"
 	"sync"
 	"testing"
@@ -17,7 +17,7 @@ import (
 	"context"
 )
 
-var client *transfer.Transfer
+var x *client.Client
 var js nats.JetStreamContext
 
 func TestMain(m *testing.M) {
@@ -25,9 +25,9 @@ func TestMain(m *testing.M) {
 	if err = UseNats(context.TODO()); err != nil {
 		panic(err)
 	}
-	if client, err = transfer.New(
-		transfer.SetNamespace("example"),
-		transfer.SetJetStream(js),
+	if x, err = client.New(
+		client.SetNamespace("example"),
+		client.SetJetStream(js),
 	); err != nil {
 		panic(err)
 	}
@@ -69,7 +69,7 @@ func UseNats(ctx context.Context) (err error) {
 }
 
 func TestTransfer_Set(t *testing.T) {
-	err := client.Set(context.TODO(), transfer.StreamOption{
+	err := x.Set(context.TODO(), client.StreamOption{
 		Key:         "system",
 		Description: "system example",
 	})
@@ -77,7 +77,7 @@ func TestTransfer_Set(t *testing.T) {
 }
 
 func TestTransfer_Update(t *testing.T) {
-	err := client.Update(context.TODO(), transfer.StreamOption{
+	err := x.Update(context.TODO(), client.StreamOption{
 		Key:         "system",
 		Description: "system example 123",
 	})
@@ -85,9 +85,9 @@ func TestTransfer_Update(t *testing.T) {
 }
 
 func TestTransfer_Get(t *testing.T) {
-	_, err := client.Get("not_exists")
+	_, err := x.Get("not_exists")
 	assert.Error(t, err)
-	result, err := client.Get("system")
+	result, err := x.Get("system")
 	assert.Nil(t, err)
 	t.Log(result)
 }
@@ -103,7 +103,7 @@ func TestTransfer_Publish(t *testing.T) {
 		"msg":  "hi",
 	}
 	go js.QueueSubscribe(subjectName, queueName, func(msg *nats.Msg) {
-		var payload transfer.Payload
+		var payload client.Payload
 		if err := msgpack.Unmarshal(msg.Data, &payload); err != nil {
 			t.Error(err)
 		}
@@ -112,7 +112,7 @@ func TestTransfer_Publish(t *testing.T) {
 		assert.Equal(t, now.UnixNano(), payload.Timestamp.UnixNano())
 		wg.Done()
 	})
-	err := client.Publish(context.TODO(), "system", transfer.Payload{
+	err := x.Publish(context.TODO(), "system", client.Payload{
 		Data:      data,
 		Timestamp: now,
 	})
@@ -155,6 +155,6 @@ func TestTransfer_Publish(t *testing.T) {
 //}
 
 func TestTransfer_Remove(t *testing.T) {
-	err := client.Remove("system")
+	err := x.Remove("system")
 	assert.Nil(t, err)
 }

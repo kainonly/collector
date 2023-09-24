@@ -1,4 +1,4 @@
-package transfer
+package client
 
 import (
 	"context"
@@ -8,14 +8,14 @@ import (
 	"time"
 )
 
-type Transfer struct {
+type Client struct {
 	Namespace string
 	Js        nats.JetStreamContext
 	KeyValue  nats.KeyValue
 }
 
-func New(options ...Option) (x *Transfer, err error) {
-	x = new(Transfer)
+func New(options ...Option) (x *Client, err error) {
+	x = new(Client)
 	for _, v := range options {
 		v(x)
 	}
@@ -27,16 +27,16 @@ func New(options ...Option) (x *Transfer, err error) {
 	return
 }
 
-type Option func(x *Transfer)
+type Option func(x *Client)
 
 func SetNamespace(v string) Option {
-	return func(x *Transfer) {
+	return func(x *Client) {
 		x.Namespace = v
 	}
 }
 
 func SetJetStream(v nats.JetStreamContext) Option {
-	return func(x *Transfer) {
+	return func(x *Client) {
 		x.Js = v
 	}
 }
@@ -46,7 +46,7 @@ type StreamOption struct {
 	Description string `msgpack:"description"`
 }
 
-func (x *Transfer) Get(key string) (result map[string]interface{}, err error) {
+func (x *Client) Get(key string) (result map[string]interface{}, err error) {
 	result = make(map[string]interface{})
 	var entry nats.KeyValueEntry
 	if entry, err = x.KeyValue.Get(key); err != nil {
@@ -66,7 +66,7 @@ func (x *Transfer) Get(key string) (result map[string]interface{}, err error) {
 	return
 }
 
-func (x *Transfer) Set(ctx context.Context, option StreamOption) (err error) {
+func (x *Client) Set(ctx context.Context, option StreamOption) (err error) {
 	var b []byte
 	if b, err = msgpack.Marshal(option); err != nil {
 		return
@@ -90,7 +90,7 @@ func (x *Transfer) Set(ctx context.Context, option StreamOption) (err error) {
 	return
 }
 
-func (x *Transfer) Update(ctx context.Context, option StreamOption) (err error) {
+func (x *Client) Update(ctx context.Context, option StreamOption) (err error) {
 	var b []byte
 	if b, err = msgpack.Marshal(option); err != nil {
 		return
@@ -114,7 +114,7 @@ func (x *Transfer) Update(ctx context.Context, option StreamOption) (err error) 
 	return
 }
 
-func (x *Transfer) Remove(key string) (err error) {
+func (x *Client) Remove(key string) (err error) {
 	if err = x.KeyValue.Delete(key); err != nil {
 		return
 	}
@@ -128,7 +128,7 @@ type Payload struct {
 	XData     map[string]interface{} `msgpack:"xdata"`
 }
 
-func (x *Transfer) Publish(ctx context.Context, key string, payload Payload) (err error) {
+func (x *Client) Publish(ctx context.Context, key string, payload Payload) (err error) {
 	var b []byte
 	if b, err = msgpack.Marshal(payload); err != nil {
 		return

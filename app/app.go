@@ -8,7 +8,6 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/common"
-	"github.com/weplanx/collector/transfer"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 	"strings"
@@ -45,7 +44,7 @@ func (x *App) Get(key string) *nats.Subscription {
 	return nil
 }
 
-func (x *App) Set(key string, option *transfer.StreamOption, v *nats.Subscription) {
+func (x *App) Set(key string, option *client.StreamOption, v *nats.Subscription) {
 	x.M.Store(key, v)
 }
 
@@ -68,7 +67,7 @@ func (x *App) Run() (err error) {
 		if entry, err = x.KeyValue.Get(key); err != nil {
 			return
 		}
-		var option transfer.StreamOption
+		var option client.StreamOption
 		if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
 			x.Log.Error("Decoding",
 				zap.ByteString("data", entry.Value()),
@@ -99,7 +98,7 @@ func (x *App) Run() (err error) {
 		}
 		switch entry.Operation().String() {
 		case "KeyValuePutOp":
-			var option transfer.StreamOption
+			var option client.StreamOption
 			if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
 				x.Log.Error("Decoding",
 					zap.ByteString("data", entry.Value()),
@@ -131,7 +130,7 @@ func (x *App) Run() (err error) {
 	return
 }
 
-func (x *App) SetSubscribe(key string, option *transfer.StreamOption) (err error) {
+func (x *App) SetSubscribe(key string, option *client.StreamOption) (err error) {
 	var sub *nats.Subscription
 	if sub, err = x.JetStream.QueueSubscribe(x.SubjectName(key), x.QueueName(key), func(msg *nats.Msg) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -165,7 +164,7 @@ func (x *App) RemoveSubscribe(measurement string) (err error) {
 }
 
 func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
-	var payload transfer.Payload
+	var payload client.Payload
 	if err = msgpack.Unmarshal(msg.Data, &payload); err != nil {
 		x.Log.Error("Decoding Failed",
 			zap.String("subject", msg.Subject),
