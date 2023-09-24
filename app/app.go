@@ -7,6 +7,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
+	"github.com/weplanx/collector/client"
 	"github.com/weplanx/collector/common"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
