@@ -75,6 +75,7 @@ func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 	}
 	if nc, err = nats.Connect(
 		strings.Join(values.Nats.Hosts, ","),
+		nats.RetryOnFailedConnect(true),
 		nats.MaxReconnects(-1),
 		nats.Nkey(pub, func(nonce []byte) ([]byte, error) {
 			sig, _ := kp.Sign(nonce)
