@@ -70,16 +70,15 @@ func (x *App) Run() (err error) {
 		}
 		var option client.StreamOption
 		if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
-			x.Log.Error("decoding",
+			x.Log.Error("decoding fail",
 				zap.ByteString("data", entry.Value()),
 				zap.Error(err),
 			)
 			return
 		}
 		if err = x.SetSubscribe(key, &option); err != nil {
-			x.Log.Error("subscription",
+			x.Log.Error("subscription updated",
 				zap.String("key", key),
-				zap.String("event", "updated"),
 				zap.String("subject", x.subject(option.Key)),
 				zap.Error(err),
 			)
@@ -102,7 +101,7 @@ func (x *App) Run() (err error) {
 		case "KeyValuePutOp":
 			var option client.StreamOption
 			if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
-				x.Log.Error("decoding",
+				x.Log.Error("decoding fail",
 					zap.ByteString("data", entry.Value()),
 					zap.Error(err),
 				)
@@ -110,9 +109,8 @@ func (x *App) Run() (err error) {
 			}
 			time.Sleep(3 * time.Second)
 			if err = x.SetSubscribe(entry.Key(), &option); err != nil {
-				x.Log.Error("subscription",
+				x.Log.Error("subscription updated",
 					zap.String("key", entry.Key()),
-					zap.String("event", "updated"),
 					zap.String("subject", x.subject(option.Key)),
 					zap.Error(err),
 				)
@@ -121,9 +119,8 @@ func (x *App) Run() (err error) {
 		case "KeyValueDeleteOp":
 			time.Sleep(3 * time.Second)
 			if err = x.RemoveSubscribe(entry.Key()); err != nil {
-				x.Log.Error("subscription",
+				x.Log.Error("subscription removed",
 					zap.String("key", entry.Key()),
-					zap.String("event", "removed"),
 					zap.Error(err),
 				)
 			}
@@ -140,7 +137,7 @@ func (x *App) SetSubscribe(key string, option *client.StreamOption) (err error) 
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		if err = x.Push(ctx, key, msg); err != nil {
-			x.Log.Error("push",
+			x.Log.Error("push fail",
 				zap.Any("data", msg.Data),
 				zap.Error(err),
 			)
@@ -149,9 +146,8 @@ func (x *App) SetSubscribe(key string, option *client.StreamOption) (err error) 
 		return
 	}
 	x.Set(key, sub)
-	x.Log.Debug("subscription",
+	x.Log.Debug("subscription updated",
 		zap.String("key", key),
-		zap.String("event", "updated"),
 		zap.String("subject", x.subject(option.Key)),
 	)
 	return
@@ -162,9 +158,8 @@ func (x *App) RemoveSubscribe(key string) (err error) {
 		return
 	}
 	x.Remove(key)
-	x.Log.Debug("subscription",
+	x.Log.Debug("subscription removed",
 		zap.String("key", key),
-		zap.String("event", "removed"),
 	)
 	return
 }
@@ -172,7 +167,7 @@ func (x *App) RemoveSubscribe(key string) (err error) {
 func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 	var payload client.Payload
 	if err = msgpack.Unmarshal(msg.Data, &payload); err != nil {
-		x.Log.Error("decoding",
+		x.Log.Error("decoding fail",
 			zap.String("subject", msg.Subject),
 			zap.String("data", string(msg.Data)),
 			zap.Error(err),
@@ -199,7 +194,7 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 		msg.NakWithDelay(time.Minute * 30)
 		return
 	}
-	x.Log.Debug("push",
+	x.Log.Debug("push ok",
 		zap.Any("payload", payload),
 	)
 	msg.Ack()
