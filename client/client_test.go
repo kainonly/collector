@@ -25,10 +25,7 @@ func TestMain(m *testing.M) {
 	if err = UseNats(context.TODO()); err != nil {
 		panic(err)
 	}
-	if x, err = client.New(
-		client.SetNamespace("example"),
-		client.SetJetStream(js),
-	); err != nil {
+	if x, err = client.New(js); err != nil {
 		panic(err)
 	}
 	os.Exit(m.Run())
@@ -56,8 +53,6 @@ func UseNats(ctx context.Context) (err error) {
 	if nc, err = nats.Connect(
 		os.Getenv("NATS_HOSTS"),
 		nats.MaxReconnects(5),
-		nats.ReconnectWait(2*time.Second),
-		nats.ReconnectJitter(500*time.Millisecond, 2*time.Second),
 		auth,
 	); err != nil {
 		return
@@ -95,8 +90,8 @@ func TestTransfer_Get(t *testing.T) {
 func TestTransfer_Publish(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
-	subjectName := fmt.Sprintf(`%s.logs.%s`, "example", "system")
-	queueName := fmt.Sprintf(`%s:logs:%s`, "example", "system")
+	subjectName := fmt.Sprintf(`collects.%s`, "system")
+	queueName := fmt.Sprintf(`COLLECT_%s`, "system")
 	now := time.Now()
 	data := map[string]interface{}{
 		"uuid": "0ff5483a-7ddc-44e0-b723-c3417988663f",

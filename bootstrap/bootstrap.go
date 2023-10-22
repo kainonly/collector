@@ -91,8 +91,9 @@ func UseJetStream(nc *nats.Conn) (nats.JetStreamContext, error) {
 	return nc.JetStream(nats.PublishAsyncMaxPending(256))
 }
 
-func UseKeyValue(values *common.Values, js nats.JetStreamContext) (nats.KeyValue, error) {
+func UseKeyValue(js nats.JetStreamContext) (nats.KeyValue, error) {
 	return js.CreateKeyValue(&nats.KeyValueConfig{
-		Bucket: fmt.Sprintf(`%s_logs`, values.Namespace),
+		Bucket:      "collector",
+		Description: "Distribution lightly queue stream collect service",
 	})
 }

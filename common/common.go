@@ -15,8 +15,6 @@ type Inject struct {
 }
 
 type Values struct {
-	Namespace string `env:"NAMESPACE,required"`
-
 	Database struct {
 		Url  string `env:"URL,required"`
 		Name string `env:"NAME,required"`
