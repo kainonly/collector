@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
-	"github.com/weplanx/collector/common"
+	"github.com/weplanx/collector/v2/common"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 	"os"

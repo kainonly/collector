@@ -6,7 +6,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/weplanx/collector/common"
+	"github.com/weplanx/collector/v2/common"
 )
 
 type Client struct {

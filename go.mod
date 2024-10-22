@@ -1,4 +1,4 @@
-module github.com/weplanx/collector
+module github.com/weplanx/collector/v2
 
 go 1.23
 

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/weplanx/collector/bootstrap"
-	"github.com/weplanx/collector/common"
+	"github.com/weplanx/collector/v2/bootstrap"
+	"github.com/weplanx/collector/v2/common"
 	"os"
 	"os/signal"
 )
