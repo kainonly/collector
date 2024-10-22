@@ -12,7 +12,11 @@ import (
 func NewApp() (*app.App, error) {
 	wire.Build(
 		wire.Struct(new(common.Inject), "*"),
-		Provides,
+		LoadStaticValues,
+		UseElastic,
+		UseNats,
+		UseJetStream,
+		UseKeyValue,
 		app.Initialize,
 	)
 	return &app.App{}, nil

@@ -1,27 +1,32 @@
 package common
 
 import (
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
 
+var Log *zap.Logger
+
 type Inject struct {
-	Values    *Values
-	Log       *zap.Logger
-	Db        *mongo.Database
-	JetStream nats.JetStreamContext
-	KeyValue  nats.KeyValue
+	Values *Values
+	Es     *elasticsearch.Client
+	Js     nats.JetStreamContext
+	Kv     nats.KeyValue
 }
 
 type Values struct {
-	Database struct {
-		Url  string `env:"URL,required"`
-		Name string `env:"NAME,required"`
-	} `envPrefix:"DATABASE_"`
+	Elastic `envPrefix:"ELASTIC_"`
+	Nats    `envPrefix:"NATS_"`
+}
 
-	Nats struct {
-		Hosts []string `env:"HOSTS,required" envSeparator:","`
-		Nkey  string   `env:"NKEY,required"`
-	} `envPrefix:"NATS_"`
+type Elastic struct {
+	Hosts    []string `env:"HOSTS,required" envSeparator:","`
+	Username string   `env:"USERNAME,required"`
+	Password string   `env:"PASSWORD,required"`
+}
+
+type Nats struct {
+	Hosts []string `env:"HOSTS,required" envSeparator:","`
+	Token string   `env:"TOKEN,required"`
 }

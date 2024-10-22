@@ -9,13 +9,13 @@ import (
 )
 
 type Client struct {
-	Js       nats.JetStreamContext
-	KeyValue nats.KeyValue
+	Js nats.JetStreamContext
+	Kv nats.KeyValue
 }
 
 func New(js nats.JetStreamContext) (x *Client, err error) {
 	x = &Client{Js: js}
-	if x.KeyValue, err = x.Js.KeyValue("collector"); err != nil {
+	if x.Kv, err = x.Js.KeyValue("collector"); err != nil {
 		return
 	}
 	return
@@ -29,7 +29,7 @@ type StreamOption struct {
 func (x *Client) Get(key string) (result map[string]interface{}, err error) {
 	result = make(map[string]interface{})
 	var entry nats.KeyValueEntry
-	if entry, err = x.KeyValue.Get(key); err != nil {
+	if entry, err = x.Kv.Get(key); err != nil {
 		return
 	}
 	var option StreamOption
@@ -51,7 +51,7 @@ func (x *Client) Set(ctx context.Context, option StreamOption) (err error) {
 	if b, err = msgpack.Marshal(option); err != nil {
 		return
 	}
-	if _, err = x.KeyValue.Put(option.Key, b); err != nil {
+	if _, err = x.Kv.Put(option.Key, b); err != nil {
 		return
 	}
 
@@ -75,7 +75,7 @@ func (x *Client) Update(ctx context.Context, option StreamOption) (err error) {
 	if b, err = msgpack.Marshal(option); err != nil {
 		return
 	}
-	if _, err = x.KeyValue.Put(option.Key, b); err != nil {
+	if _, err = x.Kv.Put(option.Key, b); err != nil {
 		return
 	}
 
@@ -95,7 +95,7 @@ func (x *Client) Update(ctx context.Context, option StreamOption) (err error) {
 }
 
 func (x *Client) Remove(key string) (err error) {
-	if err = x.KeyValue.Delete(key); err != nil {
+	if err = x.Kv.Delete(key); err != nil {
 		return
 	}
 	name := fmt.Sprintf(`COLLECT_%s`, key)

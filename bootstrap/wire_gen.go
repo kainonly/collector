@@ -18,15 +18,10 @@ func NewApp() (*app.App, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger, err := UseZap()
+	client, err := UseElastic(values)
 	if err != nil {
 		return nil, err
 	}
-	client, err := UseMongoDB(values)
-	if err != nil {
-		return nil, err
-	}
-	database := UseDatabase(values, client)
 	conn, err := UseNats(values)
 	if err != nil {
 		return nil, err
@@ -40,11 +35,10 @@ func NewApp() (*app.App, error) {
 		return nil, err
 	}
 	inject := &common.Inject{
-		Values:    values,
-		Log:       logger,
-		Db:        database,
-		JetStream: jetStreamContext,
-		KeyValue:  keyValue,
+		Values: values,
+		Es:     client,
+		Js:     jetStreamContext,
+		Kv:     keyValue,
 	}
 	appApp := app.Initialize(inject)
 	return appApp, nil
