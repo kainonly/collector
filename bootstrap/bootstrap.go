@@ -1,16 +1,35 @@
 package bootstrap
 
 import (
-	"github.com/caarlos0/env/v10"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
 	"github.com/weplanx/collector/common"
+	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
+	"os"
 	"strings"
 )
 
-func LoadStaticValues() (values *common.Values, err error) {
-	values = new(common.Values)
-	if err = env.Parse(values); err != nil {
+func SetZap() (log *zap.Logger, err error) {
+	if os.Getenv("MODE") != "release" {
+		if log, err = zap.NewDevelopment(); err != nil {
+			return
+		}
+	} else {
+		if log, err = zap.NewProduction(); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func LoadStaticValues() (v *common.Values, err error) {
+	v = new(common.Values)
+	var b []byte
+	if b, err = os.ReadFile("./config/values.yml"); err != nil {
+		return
+	}
+	if err = yaml.Unmarshal(b, &v); err != nil {
 		return
 	}
 	return

@@ -35,10 +35,10 @@ func NewApp() (*app.App, error) {
 		return nil, err
 	}
 	inject := &common.Inject{
-		Values: values,
-		Es:     client,
-		Js:     jetStreamContext,
-		Kv:     keyValue,
+		V:  values,
+		Es: client,
+		Js: jetStreamContext,
+		Kv: keyValue,
 	}
 	appApp := app.Initialize(inject)
 	return appApp, nil

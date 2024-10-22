@@ -1,0 +1,8 @@
+mode: debug
+elastic:
+  hosts: [ ]
+  username: elastic
+  password: <...>
+nats:
+  hosts: [ ]
+  token: <...>
