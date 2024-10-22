@@ -45,7 +45,7 @@ func UseNats(ctx context.Context) (err error) {
 	if js, err = nc.JetStream(nats.PublishAsyncMaxPending(256), nats.Context(ctx)); err != nil {
 		return
 	}
-	if _, err = js.CreateKeyValue(&nats.KeyValueConfig{Bucket: "collector"}); err != nil {
+	if _, err = js.KeyValue("collector"); err != nil {
 		return
 	}
 	return
@@ -53,16 +53,16 @@ func UseNats(ctx context.Context) (err error) {
 
 func TestTransfer_Set(t *testing.T) {
 	err := x.Set(context.TODO(), client.StreamOption{
-		Key:         "system",
-		Description: "system example",
+		Key:         "beta",
+		Description: "beta example",
 	})
 	assert.Nil(t, err)
 }
 
 func TestTransfer_Update(t *testing.T) {
 	err := x.Update(context.TODO(), client.StreamOption{
-		Key:         "system",
-		Description: "system example 123",
+		Key:         "beta",
+		Description: "beta example 123",
 	})
 	assert.Nil(t, err)
 }
@@ -70,22 +70,24 @@ func TestTransfer_Update(t *testing.T) {
 func TestTransfer_Get(t *testing.T) {
 	_, err := x.Get("not_exists")
 	assert.Error(t, err)
-	result, err := x.Get("system")
+	result, err := x.Get("beta")
 	assert.Nil(t, err)
-	t.Log(result)
+	t.Log(result.Option)
+	t.Log(result.Info)
 }
 
 func TestTransfer_Publish(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
-	subjectName := fmt.Sprintf(`collects.%s`, "system")
-	queueName := fmt.Sprintf(`COLLECT_%s`, "system")
+	subjectName := fmt.Sprintf(`collects.%s`, "beta")
+	queueName := fmt.Sprintf(`COLLECT_%s`, "beta")
 	now := time.Now()
 	data := map[string]interface{}{
 		"uuid": "0ff5483a-7ddc-44e0-b723-c3417988663f",
 		"msg":  "hi",
 	}
 	go js.QueueSubscribe(subjectName, queueName, func(msg *nats.Msg) {
+		t.Log("get", string(msg.Data))
 		var payload common.Payload
 		if err := gob.NewDecoder(bytes.NewBuffer(msg.Data)).
 			Decode(&payload); err != nil {
@@ -96,11 +98,13 @@ func TestTransfer_Publish(t *testing.T) {
 		assert.Equal(t, now.UnixNano(), payload.Timestamp.UnixNano())
 		wg.Done()
 	})
-	err := x.Publish(context.TODO(), "system", common.Payload{
+	time.Sleep(time.Second)
+	err := x.Publish(context.TODO(), "beta", common.Payload{
 		Data:      data,
 		Timestamp: now,
 	})
 	assert.NoError(t, err)
+	t.Log("send")
 	wg.Wait()
 }
 
@@ -139,6 +143,6 @@ func TestTransfer_Publish(t *testing.T) {
 //}
 
 func TestTransfer_Remove(t *testing.T) {
-	err := x.Remove("system")
+	err := x.Remove("beta")
 	assert.Nil(t, err)
 }

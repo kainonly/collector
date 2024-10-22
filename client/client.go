@@ -24,27 +24,28 @@ func New(js nats.JetStreamContext) (x *Client, err error) {
 }
 
 type StreamOption struct {
-	Key         string `msgpack:"key"`
-	Description string `msgpack:"description"`
+	Key         string `json:"key"`
+	Description string `json:"description"`
 }
 
-func (x *Client) Get(key string) (result map[string]interface{}, err error) {
-	result = make(map[string]interface{})
+type Result struct {
+	Option StreamOption     `json:"option"`
+	Info   *nats.StreamInfo `json:"info"`
+}
+
+func (x *Client) Get(key string) (result *Result, err error) {
+	result = new(Result)
 	var entry nats.KeyValueEntry
 	if entry, err = x.Kv.Get(key); err != nil {
 		return
 	}
-	var option StreamOption
-	if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
+	if err = sonic.Unmarshal(entry.Value(), &result.Option); err != nil {
 		return
 	}
-	result["option"] = option
 	name := fmt.Sprintf(`COLLECT_%s`, key)
-	var info *nats.StreamInfo
-	if info, err = x.Js.StreamInfo(name); err != nil {
+	if result.Info, err = x.Js.StreamInfo(name); err != nil {
 		return
 	}
-	result["info"] = *info
 	return
 }
 
