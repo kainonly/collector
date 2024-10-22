@@ -45,8 +45,14 @@ func UseNats(ctx context.Context) (err error) {
 	if js, err = nc.JetStream(nats.PublishAsyncMaxPending(256), nats.Context(ctx)); err != nil {
 		return
 	}
-	if _, err = js.KeyValue("collector"); err != nil {
-		return
+	if os.Getenv("AUTO") == "1" {
+		if _, err = js.CreateKeyValue(&nats.KeyValueConfig{Bucket: "collector"}); err != nil {
+			return
+		}
+	} else {
+		if _, err = js.KeyValue("collector"); err != nil {
+			return
+		}
 	}
 	return
 }
