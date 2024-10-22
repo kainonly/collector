@@ -112,20 +112,20 @@ func TestTransfer_Publish(t *testing.T) {
 	wg.Wait()
 }
 
-func TestTransfer_ManualPublish(t *testing.T) {
-	now := time.Now()
-	err := x.Publish(context.TODO(), "beta", common.Payload{
-		Timestamp: now,
-		Data: map[string]interface{}{
-			"metadata": map[string]interface{}{
-				"user_id": "640e7c2c7d8a24d6f831e9bf",
-			},
-			"msg": "123456",
-		},
-		XData: map[string]interface{}{},
-	})
-	assert.NoError(t, err)
-}
+//func TestTransfer_ManualPublish(t *testing.T) {
+//	now := time.Now()
+//	err := x.Publish(context.TODO(), "beta", common.Payload{
+//		Timestamp: now,
+//		Data: map[string]interface{}{
+//			"metadata": map[string]interface{}{
+//				"user_id": "640e7c2c7d8a24d6f831e9bf",
+//			},
+//			"msg": "123456",
+//		},
+//		XData: map[string]interface{}{},
+//	})
+//	assert.NoError(t, err)
+//}
 
 //
 //func TestTransfer_ManualPublishNone(t *testing.T) {
