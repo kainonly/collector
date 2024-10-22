@@ -1,12 +1,13 @@
 package app
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
-	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/client"
 	"github.com/weplanx/collector/common"
 	"go.uber.org/zap"
@@ -68,7 +69,7 @@ func (x *App) Run() (err error) {
 			return
 		}
 		var option client.StreamOption
-		if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
+		if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
 			common.Log.Error("decoding fail",
 				zap.ByteString("data", entry.Value()),
 				zap.Error(err),
@@ -98,7 +99,7 @@ func (x *App) Run() (err error) {
 		switch entry.Operation().String() {
 		case "KeyValuePutOp":
 			var option client.StreamOption
-			if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
+			if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
 				common.Log.Error("decoding fail",
 					zap.ByteString("data", entry.Value()),
 					zap.Error(err),
@@ -163,8 +164,9 @@ func (x *App) RemoveSubscribe(key string) (err error) {
 }
 
 func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
-	var payload client.Payload
-	if err = msgpack.Unmarshal(msg.Data, &payload); err != nil {
+	var payload common.Payload
+	if err = gob.NewDecoder(bytes.NewBuffer(msg.Data)).
+		Decode(&payload); err != nil {
 		common.Log.Error("decoding fail",
 			zap.String("subject", msg.Subject),
 			zap.String("data", string(msg.Data)),

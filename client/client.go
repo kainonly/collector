@@ -1,11 +1,13 @@
 package client
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"fmt"
+	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
-	"github.com/vmihailenco/msgpack/v5"
-	"time"
+	"github.com/weplanx/collector/common"
 )
 
 type Client struct {
@@ -33,7 +35,7 @@ func (x *Client) Get(key string) (result map[string]interface{}, err error) {
 		return
 	}
 	var option StreamOption
-	if err = msgpack.Unmarshal(entry.Value(), &option); err != nil {
+	if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
 		return
 	}
 	result["option"] = option
@@ -48,7 +50,7 @@ func (x *Client) Get(key string) (result map[string]interface{}, err error) {
 
 func (x *Client) Set(ctx context.Context, option StreamOption) (err error) {
 	var b []byte
-	if b, err = msgpack.Marshal(option); err != nil {
+	if b, err = sonic.Marshal(option); err != nil {
 		return
 	}
 	if _, err = x.Kv.Put(option.Key, b); err != nil {
@@ -72,7 +74,7 @@ func (x *Client) Set(ctx context.Context, option StreamOption) (err error) {
 
 func (x *Client) Update(ctx context.Context, option StreamOption) (err error) {
 	var b []byte
-	if b, err = msgpack.Marshal(option); err != nil {
+	if b, err = sonic.Marshal(option); err != nil {
 		return
 	}
 	if _, err = x.Kv.Put(option.Key, b); err != nil {
@@ -102,19 +104,14 @@ func (x *Client) Remove(key string) (err error) {
 	return x.Js.DeleteStream(name)
 }
 
-type Payload struct {
-	Timestamp time.Time              `msgpack:"timestamp"`
-	Data      map[string]interface{} `msgpack:"data"`
-	XData     map[string]interface{} `msgpack:"xdata"`
-}
-
-func (x *Client) Publish(ctx context.Context, key string, payload Payload) (err error) {
-	var b []byte
-	if b, err = msgpack.Marshal(payload); err != nil {
+func (x *Client) Publish(ctx context.Context, key string, payload common.Payload) (err error) {
+	var buf bytes.Buffer
+	encoder := gob.NewEncoder(&buf)
+	if err = encoder.Encode(payload); err != nil {
 		return
 	}
 	subject := fmt.Sprintf(`collects.%s`, key)
-	if _, err = x.Js.Publish(subject, b, nats.Context(ctx)); err != nil {
+	if _, err = x.Js.Publish(subject, buf.Bytes(), nats.Context(ctx)); err != nil {
 		return
 	}
 	return

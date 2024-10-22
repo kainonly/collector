@@ -4,6 +4,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
+	"time"
 )
 
 var Log *zap.Logger
@@ -29,4 +30,10 @@ type Elastic struct {
 type Nats struct {
 	Hosts []string `env:"HOSTS,required" envSeparator:","`
 	Token string   `env:"TOKEN,required"`
+}
+
+type Payload struct {
+	Timestamp time.Time
+	Data      map[string]interface{}
+	XData     map[string]interface{}
 }

@@ -1,12 +1,13 @@
 package client_test
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
-	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/client"
+	"github.com/weplanx/collector/common"
 	"os"
 	"sync"
 	"testing"
@@ -32,28 +33,12 @@ func TestMain(m *testing.M) {
 }
 
 func UseNats(ctx context.Context) (err error) {
-	var auth nats.Option
-	var kp nkeys.KeyPair
-	if kp, err = nkeys.FromSeed([]byte(os.Getenv("NATS_NKEY"))); err != nil {
-		return
-	}
-	defer kp.Wipe()
-	var pub string
-	if pub, err = kp.PublicKey(); err != nil {
-		return
-	}
-	if !nkeys.IsValidPublicUserKey(pub) {
-		panic("nkey failed")
-	}
-	auth = nats.Nkey(pub, func(nonce []byte) ([]byte, error) {
-		sig, _ := kp.Sign(nonce)
-		return sig, nil
-	})
 	var nc *nats.Conn
 	if nc, err = nats.Connect(
 		os.Getenv("NATS_HOSTS"),
-		nats.MaxReconnects(5),
-		auth,
+		nats.Token(os.Getenv("NATS_TOKEN")),
+		nats.RetryOnFailedConnect(true),
+		nats.MaxReconnects(-1),
 	); err != nil {
 		return
 	}
@@ -101,16 +86,17 @@ func TestTransfer_Publish(t *testing.T) {
 		"msg":  "hi",
 	}
 	go js.QueueSubscribe(subjectName, queueName, func(msg *nats.Msg) {
-		var payload client.Payload
-		if err := msgpack.Unmarshal(msg.Data, &payload); err != nil {
-			t.Error(err)
+		var payload common.Payload
+		if err := gob.NewDecoder(bytes.NewBuffer(msg.Data)).
+			Decode(&payload); err != nil {
+			t.Error()
 		}
 		t.Log(payload)
 		assert.Equal(t, data, payload.Data)
 		assert.Equal(t, now.UnixNano(), payload.Timestamp.UnixNano())
 		wg.Done()
 	})
-	err := x.Publish(context.TODO(), "system", client.Payload{
+	err := x.Publish(context.TODO(), "system", common.Payload{
 		Data:      data,
 		Timestamp: now,
 	})
