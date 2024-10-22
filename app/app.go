@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -134,9 +133,7 @@ func (x *App) Run() (err error) {
 func (x *App) SetSubscribe(key string, option *client.StreamOption) (err error) {
 	var sub *nats.Subscription
 	if sub, err = x.Js.QueueSubscribe(x.subject(key), x.name(key), func(msg *nats.Msg) {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		if err = x.Push(ctx, key, msg); err != nil {
+		if err = x.Push(key, msg); err != nil {
 			common.Log.Error("push fail",
 				zap.Any("data", msg.Data),
 				zap.Error(err),
@@ -164,9 +161,9 @@ func (x *App) RemoveSubscribe(key string) (err error) {
 	return
 }
 
-func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
+func (x *App) Push(key string, msg *nats.Msg) (err error) {
 	var payload common.Payload
-	if err = gob.NewDecoder(bytes.NewBuffer(msg.Data)).
+	if err = gob.NewDecoder(bytes.NewReader(msg.Data)).
 		Decode(&payload); err != nil {
 		common.Log.Error("decoding fail",
 			zap.String("subject", msg.Subject),
@@ -180,22 +177,22 @@ func (x *App) Push(ctx context.Context, key string, msg *nats.Msg) (err error) {
 		zap.Any("data", payload),
 	)
 	data := payload.Data
-	data["timestamp"] = payload.Timestamp
-	fmt.Println(data)
-	//if err = x.Transform(data, payload.XData); err != nil {
-	//	if _, err = x.Db.Collection(fmt.Sprintf(`%s_fail`, key)).
-	//		InsertOne(ctx, data); err != nil {
-	//		msg.NakWithDelay(time.Minute * 30)
-	//		return
-	//	}
-	//	msg.Term()
-	//	return
-	//}
-	//if _, err = x.Db.Collection(key).
-	//	InsertOne(ctx, data); err != nil {
-	//	msg.NakWithDelay(time.Minute * 30)
-	//	return
-	//}
+	data["@timestamp"] = payload.Timestamp
+	if err = x.Transform(data, payload.XData); err != nil {
+		b, _ := sonic.Marshal(data)
+		if _, err = x.Es.Index(fmt.Sprintf(`%s_fail`, key), bytes.NewReader(b)); err != nil {
+			msg.NakWithDelay(time.Minute * 30)
+			return
+		}
+		msg.Term()
+		return
+	}
+	b, _ := sonic.Marshal(data)
+	if _, err = x.Es.Index(key, bytes.NewReader(b)); err != nil {
+		msg.NakWithDelay(time.Minute * 30)
+		return
+	}
+
 	common.Log.Debug("push ok",
 		zap.Any("payload", payload),
 	)
