@@ -10,7 +10,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - run: docker-compose -f ".github/compose/docker-compose.yml" up -d
+      - run: docker compose -f ".github/compose/docker-compose.yml" up -d
       - uses: actions/setup-go@v5
         with:
           go-version: ~1.23
