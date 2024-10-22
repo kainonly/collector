@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/v2/client"
-	"github.com/weplanx/collector/v2/common"
 	"os"
 	"sync"
 	"testing"
@@ -93,7 +92,7 @@ func TestTransfer_Publish(t *testing.T) {
 	}
 	go js.QueueSubscribe(subjectName, queueName, func(msg *nats.Msg) {
 		t.Log("get", string(msg.Data))
-		var payload common.Payload
+		var payload client.Payload
 		if err := msgpack.Unmarshal(msg.Data, &payload); err != nil {
 			t.Error()
 		}
@@ -103,7 +102,7 @@ func TestTransfer_Publish(t *testing.T) {
 		wg.Done()
 	})
 	time.Sleep(time.Second)
-	err := x.Publish(context.TODO(), "beta", common.Payload{
+	err := x.Publish(context.TODO(), "beta", client.Payload{
 		Data:      data,
 		Timestamp: now,
 	})
