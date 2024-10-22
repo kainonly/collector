@@ -6,12 +6,18 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/weplanx/collector/v2/common"
+	"time"
 )
 
 type Client struct {
 	Js nats.JetStreamContext
 	Kv nats.KeyValue
+}
+
+type Payload struct {
+	Timestamp time.Time              `msgpack:"timestamp"`
+	Data      map[string]interface{} `msgpack:"data"`
+	XData     map[string]interface{} `msgpack:"xdata"`
 }
 
 func New(js nats.JetStreamContext) (x *Client, err error) {
@@ -104,7 +110,7 @@ func (x *Client) Remove(key string) (err error) {
 	return x.Js.DeleteStream(name)
 }
 
-func (x *Client) Publish(ctx context.Context, key string, payload common.Payload) (err error) {
+func (x *Client) Publish(ctx context.Context, key string, payload Payload) (err error) {
 	var b []byte
 	if b, err = msgpack.Marshal(payload); err != nil {
 		return

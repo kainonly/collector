@@ -23,6 +23,12 @@ type App struct {
 
 type M = map[string]interface{}
 
+type Payload struct {
+	Timestamp time.Time              `msgpack:"timestamp"`
+	Data      map[string]interface{} `msgpack:"data"`
+	XData     map[string]interface{} `msgpack:"xdata"`
+}
+
 func Initialize(i *common.Inject) (x *App) {
 	return &App{
 		Inject: i,
@@ -162,7 +168,7 @@ func (x *App) RemoveSubscribe(key string) (err error) {
 }
 
 func (x *App) Push(key string, msg *nats.Msg) (err error) {
-	var payload common.Payload
+	var payload Payload
 	if err = msgpack.Unmarshal(msg.Data, &payload); err != nil {
 		common.Log.Error("decoding fail",
 			zap.String("subject", msg.Subject),
