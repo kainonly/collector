@@ -2,11 +2,11 @@ package app
 
 import (
 	"bytes"
-	"encoding/gob"
 	"errors"
 	"fmt"
 	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
+	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/client"
 	"github.com/weplanx/collector/common"
 	"go.uber.org/zap"
@@ -163,8 +163,7 @@ func (x *App) RemoveSubscribe(key string) (err error) {
 
 func (x *App) Push(key string, msg *nats.Msg) (err error) {
 	var payload common.Payload
-	if err = gob.NewDecoder(bytes.NewReader(msg.Data)).
-		Decode(&payload); err != nil {
+	if err = msgpack.Unmarshal(msg.Data, &payload); err != nil {
 		common.Log.Error("decoding fail",
 			zap.String("subject", msg.Subject),
 			zap.String("data", string(msg.Data)),
@@ -235,36 +234,44 @@ func (x *App) Pipe(input M, paths []string, kind interface{}) (err error) {
 	var data interface{}
 	switch kind {
 	case "date":
-		if data, err = time.Parse(time.RFC1123, unknow.(string)); err != nil {
-			return
+		if v, ok := unknow.(string); ok {
+			if data, err = time.Parse(time.RFC1123, v); err != nil {
+				return
+			}
 		}
 		break
 	case "dates":
-		dates := unknow.([]interface{})
-		for i, date := range dates {
-			if dates[i], err = time.Parse(time.RFC1123, date.(string)); err != nil {
-				return
+		if dates, ok := unknow.([]interface{}); ok {
+			for i, date := range dates {
+				if dates[i], err = time.Parse(time.RFC1123, date.(string)); err != nil {
+					return
+				}
 			}
+			data = dates
 		}
-		data = dates
 		break
 	case "timestamp":
-		if data, err = time.Parse(time.RFC3339, unknow.(string)); err != nil {
-			return
+		if v, ok := unknow.(string); ok {
+			if data, err = time.Parse(time.RFC3339, v); err != nil {
+				return
+			}
 		}
 		break
 	case "timestamps":
-		timestamps := unknow.([]interface{})
-		for i, timestamp := range timestamps {
-			if timestamps[i], err = time.Parse(time.RFC3339, timestamp.(string)); err != nil {
-				return
+		if timestamps, ok := unknow.([]interface{}); ok {
+			for i, timestamp := range timestamps {
+				if timestamps[i], err = time.Parse(time.RFC3339, timestamp.(string)); err != nil {
+					return
+				}
 			}
+			data = timestamps
 		}
-		data = timestamps
 		break
 	case "json":
-		if err = sonic.Unmarshal(unknow.([]byte), &data); err != nil {
-			return
+		if b, ok := unknow.([]byte); ok {
+			if err = sonic.Unmarshal(b, &data); err != nil {
+				return
+			}
 		}
 		break
 	}

@@ -1,12 +1,11 @@
 package client
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"fmt"
 	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
+	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/common"
 )
 
@@ -106,13 +105,12 @@ func (x *Client) Remove(key string) (err error) {
 }
 
 func (x *Client) Publish(ctx context.Context, key string, payload common.Payload) (err error) {
-	var buf bytes.Buffer
-	encoder := gob.NewEncoder(&buf)
-	if err = encoder.Encode(payload); err != nil {
+	var b []byte
+	if b, err = msgpack.Marshal(payload); err != nil {
 		return
 	}
 	subject := fmt.Sprintf(`collects.%s`, key)
-	if _, err = x.Js.Publish(subject, buf.Bytes(), nats.Context(ctx)); err != nil {
+	if _, err = x.Js.Publish(subject, b, nats.Context(ctx)); err != nil {
 		return
 	}
 	return

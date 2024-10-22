@@ -1,11 +1,10 @@
 package client_test
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
+	"github.com/vmihailenco/msgpack/v5"
 	"github.com/weplanx/collector/client"
 	"github.com/weplanx/collector/common"
 	"os"
@@ -95,8 +94,7 @@ func TestTransfer_Publish(t *testing.T) {
 	go js.QueueSubscribe(subjectName, queueName, func(msg *nats.Msg) {
 		t.Log("get", string(msg.Data))
 		var payload common.Payload
-		if err := gob.NewDecoder(bytes.NewBuffer(msg.Data)).
-			Decode(&payload); err != nil {
+		if err := msgpack.Unmarshal(msg.Data, &payload); err != nil {
 			t.Error()
 		}
 		t.Log(payload)
@@ -116,7 +114,7 @@ func TestTransfer_Publish(t *testing.T) {
 
 //func TestTransfer_ManualPublish(t *testing.T) {
 //	now := time.Now()
-//	err := client.Publish(context.TODO(), "system", transfer.Payload{
+//	err := x.Publish(context.TODO(), "beta", common.Payload{
 //		Timestamp: now,
 //		Data: map[string]interface{}{
 //			"metadata": map[string]interface{}{
@@ -124,25 +122,37 @@ func TestTransfer_Publish(t *testing.T) {
 //			},
 //			"msg": "123456",
 //		},
-//		Format: map[string]interface{}{
-//			"metadata.user_id": "oid",
-//		},
+//		XData: map[string]interface{}{},
 //	})
 //	assert.NoError(t, err)
 //}
-
+//
 //func TestTransfer_ManualPublishNone(t *testing.T) {
 //	now := time.Now()
-//	err := client.Publish(context.TODO(), "system", transfer.Payload{
+//	err := x.Publish(context.TODO(), "beta", common.Payload{
 //		Timestamp: now,
 //		Data: map[string]interface{}{
 //			"metadata": map[string]interface{}{
-//				"user_id": "",
+//				"now": now.Format(time.RFC1123),
+//				"range": []string{
+//					now.Format(time.RFC1123),
+//					now.Add(time.Hour).Format(time.RFC1123),
+//				},
+//				"ts": now.Format(time.RFC3339),
+//				"ts-range": []string{
+//					now.Format(time.RFC3339),
+//					now.Add(time.Hour).Format(time.RFC3339),
+//				},
 //			},
-//			"msg": "123456",
+//			"msg":  "123456",
+//			"data": []byte(`{"name":"kain"}`),
 //		},
-//		Format: map[string]interface{}{
-//			"metadata.user_id": "oid",
+//		XData: map[string]interface{}{
+//			"metadata.now":      "date",
+//			"metadata.range":    "dates",
+//			"metadata.ts":       "timestamp",
+//			"metadata.ts-range": "timestamps",
+//			"data":              "json",
 //		},
 //	})
 //	assert.NoError(t, err)
