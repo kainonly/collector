@@ -30,7 +30,7 @@ func NewApp() (*app.App, error) {
 	if err != nil {
 		return nil, err
 	}
-	keyValue, err := UseKeyValue(jetStreamContext)
+	keyValue, err := UseKeyValue(values, jetStreamContext)
 	if err != nil {
 		return nil, err
 	}

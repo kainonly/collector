@@ -1,9 +1,11 @@
 package common
 
 type Values struct {
-	Mode    string  `yaml:"mode"`
-	Elastic Elastic `yaml:"elastic"`
-	Nats    Nats    `yaml:"nats"`
+	Mode        string  `yaml:"mode"`
+	Namespace   string  `yaml:"namespace"`
+	Description string  `yaml:"description"`
+	Elastic     Elastic `yaml:"elastic"`
+	Nats        Nats    `yaml:"nats"`
 }
 
 type Elastic struct {

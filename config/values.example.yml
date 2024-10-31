@@ -1,4 +1,6 @@
 mode: debug
+namespace: beta
+description: A beta collector
 elastic:
   hosts: [ ]
   username: elastic

@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 	if err = UseNats(context.TODO()); err != nil {
 		panic(err)
 	}
-	if x, err = client.New(js); err != nil {
+	if x, err = client.New("beta", js); err != nil {
 		panic(err)
 	}
 	os.Exit(m.Run())
@@ -42,15 +42,6 @@ func UseNats(ctx context.Context) (err error) {
 	}
 	if js, err = nc.JetStream(nats.PublishAsyncMaxPending(256), nats.Context(ctx)); err != nil {
 		return
-	}
-	if os.Getenv("AUTO") == "1" {
-		if _, err = js.CreateKeyValue(&nats.KeyValueConfig{Bucket: "collector"}); err != nil {
-			return
-		}
-	} else {
-		if _, err = js.KeyValue("collector"); err != nil {
-			return
-		}
 	}
 	return
 }
@@ -83,8 +74,8 @@ func TestTransfer_Get(t *testing.T) {
 func TestTransfer_Publish(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
-	subjectName := fmt.Sprintf(`collects.%s`, "beta")
-	queueName := fmt.Sprintf(`COLLECT_%s`, "beta")
+	subjectName := fmt.Sprintf(`beta.%s`, "beta")
+	queueName := fmt.Sprintf(`beta_%s`, "beta")
 	now := time.Now()
 	data := map[string]interface{}{
 		"uuid": "0ff5483a-7ddc-44e0-b723-c3417988663f",

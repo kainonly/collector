@@ -36,12 +36,16 @@ func Initialize(i *common.Inject) (x *App) {
 	}
 }
 
+func (x *App) NamespaceParse() string {
+	return strings.Replace(x.V.Namespace, "-", "_", -1)
+}
+
 func (x *App) name(key string) string {
-	return fmt.Sprintf(`COLLECT_%s`, key)
+	return fmt.Sprintf(`%s_%s`, x.NamespaceParse(), key)
 }
 
 func (x *App) subject(key string) string {
-	return fmt.Sprintf(`collects.%s`, key)
+	return fmt.Sprintf(`%s.%s`, x.NamespaceParse(), key)
 }
 
 func (x *App) Get(key string) *nats.Subscription {

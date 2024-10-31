@@ -6,12 +6,14 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
 	"github.com/vmihailenco/msgpack/v5"
+	"strings"
 	"time"
 )
 
 type Client struct {
-	Js nats.JetStreamContext
-	Kv nats.KeyValue
+	Namespace string
+	Js        nats.JetStreamContext
+	Kv        nats.KeyValue
 }
 
 type Payload struct {
@@ -20,9 +22,12 @@ type Payload struct {
 	XData     map[string]interface{} `msgpack:"xdata"`
 }
 
-func New(js nats.JetStreamContext) (x *Client, err error) {
-	x = &Client{Js: js}
-	if x.Kv, err = x.Js.KeyValue("collector"); err != nil {
+func New(namespace string, js nats.JetStreamContext) (x *Client, err error) {
+	x = &Client{
+		Namespace: namespace,
+		Js:        js,
+	}
+	if x.Kv, err = x.Js.KeyValue(x.Namespace); err != nil {
 		return
 	}
 	return
@@ -38,6 +43,10 @@ type Result struct {
 	Info   *nats.StreamInfo `json:"info"`
 }
 
+func (x *Client) NamespaceParse() string {
+	return strings.Replace(x.Namespace, "-", "_", -1)
+}
+
 func (x *Client) Get(key string) (result *Result, err error) {
 	result = new(Result)
 	var entry nats.KeyValueEntry
@@ -47,7 +56,7 @@ func (x *Client) Get(key string) (result *Result, err error) {
 	if err = sonic.Unmarshal(entry.Value(), &result.Option); err != nil {
 		return
 	}
-	name := fmt.Sprintf(`COLLECT_%s`, key)
+	name := fmt.Sprintf(`%s_%s`, x.NamespaceParse(), key)
 	if result.Info, err = x.Js.StreamInfo(name); err != nil {
 		return
 	}
@@ -63,14 +72,13 @@ func (x *Client) Set(ctx context.Context, option StreamOption) (err error) {
 		return
 	}
 
-	name := fmt.Sprintf(`COLLECT_%s`, option.Key)
-	subject := fmt.Sprintf(`collects.%s`, option.Key)
+	name := fmt.Sprintf(`%s_%s`, x.NamespaceParse(), option.Key)
+	subject := fmt.Sprintf(`%s.%s`, x.NamespaceParse(), option.Key)
 
 	if _, err = x.Js.AddStream(&nats.StreamConfig{
-		Name:        name,
-		Subjects:    []string{subject},
-		Description: option.Description,
-		Retention:   nats.WorkQueuePolicy,
+		Name:      name,
+		Subjects:  []string{subject},
+		Retention: nats.WorkQueuePolicy,
 	}, nats.Context(ctx)); err != nil {
 		return
 	}
@@ -87,14 +95,13 @@ func (x *Client) Update(ctx context.Context, option StreamOption) (err error) {
 		return
 	}
 
-	name := fmt.Sprintf(`COLLECT_%s`, option.Key)
-	subject := fmt.Sprintf(`collects.%s`, option.Key)
+	name := fmt.Sprintf(`%s_%s`, x.NamespaceParse(), option.Key)
+	subject := fmt.Sprintf(`%s.%s`, x.NamespaceParse(), option.Key)
 
 	if _, err = x.Js.UpdateStream(&nats.StreamConfig{
-		Name:        name,
-		Subjects:    []string{subject},
-		Description: option.Description,
-		Retention:   nats.WorkQueuePolicy,
+		Name:      name,
+		Subjects:  []string{subject},
+		Retention: nats.WorkQueuePolicy,
 	}, nats.Context(ctx)); err != nil {
 		return
 	}
@@ -106,7 +113,7 @@ func (x *Client) Remove(key string) (err error) {
 	if err = x.Kv.Delete(key); err != nil {
 		return
 	}
-	name := fmt.Sprintf(`COLLECT_%s`, key)
+	name := fmt.Sprintf(`%s_%s`, x.NamespaceParse(), key)
 	return x.Js.DeleteStream(name)
 }
 
@@ -115,7 +122,7 @@ func (x *Client) Publish(ctx context.Context, key string, payload Payload) (err 
 	if b, err = msgpack.Marshal(payload); err != nil {
 		return
 	}
-	subject := fmt.Sprintf(`collects.%s`, key)
+	subject := fmt.Sprintf(`%s.%s`, x.NamespaceParse(), key)
 	if _, err = x.Js.Publish(subject, b, nats.Context(ctx)); err != nil {
 		return
 	}
