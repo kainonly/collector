@@ -1,8 +1,8 @@
 package common
 
 import (
-	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -10,7 +10,8 @@ var Log *zap.Logger
 
 type Inject struct {
 	V  *Values
-	Es *elasticsearch.Client
+	Mc *mongo.Client
+	Db *mongo.Database
 	Js nats.JetStreamContext
 	Kv nats.KeyValue
 }

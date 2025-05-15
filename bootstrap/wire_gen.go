@@ -7,8 +7,8 @@
 package bootstrap
 
 import (
-	"github.com/weplanx/collector/v2/app"
-	"github.com/weplanx/collector/v2/common"
+	"github.com/weplanx/collector/v3/app"
+	"github.com/weplanx/collector/v3/common"
 )
 
 // Injectors from wire.go:
@@ -18,10 +18,11 @@ func NewApp() (*app.App, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := UseElastic(values)
+	client, err := UseMongo(values)
 	if err != nil {
 		return nil, err
 	}
+	database := UseDatabase(values, client)
 	conn, err := UseNats(values)
 	if err != nil {
 		return nil, err
@@ -36,7 +37,8 @@ func NewApp() (*app.App, error) {
 	}
 	inject := &common.Inject{
 		V:  values,
-		Es: client,
+		Mc: client,
+		Db: database,
 		Js: jetStreamContext,
 		Kv: keyValue,
 	}

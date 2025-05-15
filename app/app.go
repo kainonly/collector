@@ -1,71 +1,66 @@
 package app
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/bytedance/sonic"
 	"github.com/nats-io/nats.go"
-	"github.com/vmihailenco/msgpack/v5"
-	"github.com/weplanx/collector/v2/client"
-	"github.com/weplanx/collector/v2/common"
+	"github.com/weplanx/collector/v3/common"
 	"go.uber.org/zap"
-	"strings"
 	"sync"
 	"time"
 )
 
 type App struct {
 	*common.Inject
-
-	M sync.Map
+	*M[string, *nats.Subscription]
 }
 
-type M = map[string]interface{}
+type M[K comparable, S any] struct {
+	m sync.Map
+}
 
-type Payload struct {
-	Timestamp time.Time              `msgpack:"timestamp"`
-	Data      map[string]interface{} `msgpack:"data"`
-	XData     map[string]interface{} `msgpack:"xdata"`
+func (x *M[K, S]) Create(key K, v S) {
+	x.m.Store(key, v)
+}
+
+func (x *M[K, S]) Destroy(key K) S {
+	if value, ok := x.m.LoadAndDelete(key); ok {
+		return value.(S)
+	}
+	var zero S
+	return zero
+}
+
+func (x *M[K, S]) Remove(key K) {
+	x.m.Delete(key)
 }
 
 func Initialize(i *common.Inject) (x *App) {
 	return &App{
 		Inject: i,
-		M:      sync.Map{},
+		M:      &M[string, *nats.Subscription]{m: sync.Map{}},
 	}
 }
 
-func (x *App) NamespaceParse() string {
-	return strings.Replace(x.V.Namespace, "-", "_", -1)
+type Option struct {
+	Key         string   `json:"key"`
+	Subs        []string `json:"subs"`
+	Collection  string   `json:"collection"`
+	Description string   `json:"description"`
 }
 
-func (x *App) name(key string) string {
-	return fmt.Sprintf(`%s_%s`, x.NamespaceParse(), key)
+func (x *App) Name(key string) string {
+	return fmt.Sprintf(`%s_%s`, x.V.Namespace, key)
 }
 
-func (x *App) subject(key string) string {
-	return fmt.Sprintf(`%s.%s`, x.NamespaceParse(), key)
-}
-
-func (x *App) Get(key string) *nats.Subscription {
-	if value, ok := x.M.Load(key); ok {
-		return value.(*nats.Subscription)
-	}
-	return nil
-}
-
-func (x *App) Set(key string, v *nats.Subscription) {
-	x.M.Store(key, v)
-}
-
-func (x *App) Remove(key string) {
-	x.M.Delete(key)
+func (x *App) SubName(key string) string {
+	return fmt.Sprintf(`%s.%s`, x.V.Namespace, key)
 }
 
 func (x *App) Run() (err error) {
 	var keys []string
-
 	if keys, err = x.Kv.Keys(); errors.Is(err, nats.ErrNoObjectsFound) {
 		if errors.Is(err, nats.ErrNoObjectsFound) {
 			keys = make([]string, 0)
@@ -78,58 +73,61 @@ func (x *App) Run() (err error) {
 		if entry, err = x.Kv.Get(key); err != nil {
 			return
 		}
-		var option client.StreamOption
+		var option Option
 		if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
-			common.Log.Error("decoding fail",
+			common.Log.Error("option decoding fail",
 				zap.ByteString("data", entry.Value()),
 				zap.Error(err),
 			)
 			return
 		}
-		if err = x.SetSubscribe(key, &option); err != nil {
-			common.Log.Error("subscription updated",
+		if err = x.Subscribe(option); err != nil {
+			common.Log.Error("subscription create fail",
 				zap.String("key", key),
-				zap.String("subject", x.subject(option.Key)),
+				zap.String("subject", x.SubName(key)),
 				zap.Error(err),
 			)
 		}
 	}
-
-	common.Log.Info("service started!")
+	common.Log.Info(`collector service has been initialized successfully.`)
 
 	var watch nats.KeyWatcher
 	if watch, err = x.Kv.WatchAll(); err != nil {
 		return
 	}
+
+	common.Log.Info(`automatically observing configuration changes.`)
 	cur := time.Now()
 	for entry := range watch.Updates() {
 		if entry == nil || entry.Created().Unix() < cur.Unix() {
 			continue
 		}
+		key := entry.Key()
 		switch entry.Operation().String() {
 		case "KeyValuePutOp":
-			var option client.StreamOption
+			var option Option
 			if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
-				common.Log.Error("decoding fail",
+				common.Log.Error("option decoding fail",
 					zap.ByteString("data", entry.Value()),
 					zap.Error(err),
 				)
 				return
 			}
+
 			time.Sleep(3 * time.Second)
-			if err = x.SetSubscribe(entry.Key(), &option); err != nil {
-				common.Log.Error("subscription updated",
-					zap.String("key", entry.Key()),
-					zap.String("subject", x.subject(option.Key)),
+			if err = x.Subscribe(option); err != nil {
+				common.Log.Error("subscription create faild",
+					zap.String("key", key),
+					zap.String("subject", x.SubName(key)),
 					zap.Error(err),
 				)
 			}
 			break
 		case "KeyValueDeleteOp":
 			time.Sleep(3 * time.Second)
-			if err = x.RemoveSubscribe(entry.Key()); err != nil {
-				common.Log.Error("subscription removed",
-					zap.String("key", entry.Key()),
+			if err = x.Unsubscribe(key); err != nil {
+				common.Log.Error("subscription destroy failed",
+					zap.String("key", key),
 					zap.Error(err),
 				)
 			}
@@ -140,151 +138,48 @@ func (x *App) Run() (err error) {
 	return
 }
 
-func (x *App) SetSubscribe(key string, option *client.StreamOption) (err error) {
-	var sub *nats.Subscription
-	if sub, err = x.Js.QueueSubscribe(x.subject(key), x.name(key), func(msg *nats.Msg) {
-		if err = x.Push(key, msg); err != nil {
+func (x *App) Subscribe(option Option) (err error) {
+	var subscription *nats.Subscription
+	if subscription, err = x.Js.QueueSubscribe(x.SubName(option.Key), x.Name(option.Key), func(msg *nats.Msg) {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err = x.Factory(ctx, option, msg.Data); err != nil {
+			msg.NakWithDelay(time.Minute * 30)
 			common.Log.Error("push fail",
 				zap.Any("data", msg.Data),
 				zap.Error(err),
 			)
 		}
+		msg.Ack()
 	}, nats.ManualAck()); err != nil {
 		return
 	}
-	x.Set(key, sub)
-	common.Log.Debug("subscription updated",
+
+	x.Create(option.Key, subscription)
+	common.Log.Debug("subscription create ok",
+		zap.String("key", option.Key),
+		zap.String("subject", x.SubName(option.Key)),
+	)
+	return
+}
+
+func (x *App) Factory(ctx context.Context, option Option, data []byte) (err error) {
+	name := option.Key
+	if option.Collection != "" {
+		name = option.Collection
+	}
+	if _, err = x.Db.Collection(name).InsertOne(ctx, data); err != nil {
+		return
+	}
+	return
+}
+
+func (x *App) Unsubscribe(key string) (err error) {
+	if err = x.Destroy(key).Drain(); err != nil {
+		return
+	}
+	common.Log.Debug("subscription destroy ok",
 		zap.String("key", key),
-		zap.String("subject", x.subject(option.Key)),
 	)
-	return
-}
-
-func (x *App) RemoveSubscribe(key string) (err error) {
-	if err = x.Get(key).Drain(); err != nil {
-		return
-	}
-	x.Remove(key)
-	common.Log.Debug("subscription removed",
-		zap.String("key", key),
-	)
-	return
-}
-
-func (x *App) Push(key string, msg *nats.Msg) (err error) {
-	var payload Payload
-	if err = msgpack.Unmarshal(msg.Data, &payload); err != nil {
-		common.Log.Error("decoding fail",
-			zap.String("subject", msg.Subject),
-			zap.String("data", string(msg.Data)),
-			zap.Error(err),
-		)
-		return
-	}
-	common.Log.Debug("decoding",
-		zap.String("subject", msg.Subject),
-		zap.Any("data", payload),
-	)
-	data := payload.Data
-	data["@timestamp"] = payload.Timestamp
-	if err = x.Transform(data, payload.XData); err != nil {
-		b, _ := sonic.Marshal(data)
-		if _, err = x.Es.Index(fmt.Sprintf(`%s_fail`, key), bytes.NewReader(b)); err != nil {
-			msg.NakWithDelay(time.Minute * 30)
-			return
-		}
-		msg.Term()
-		return
-	}
-	b, _ := sonic.Marshal(data)
-	if _, err = x.Es.Index(key, bytes.NewReader(b)); err != nil {
-		msg.NakWithDelay(time.Minute * 30)
-		return
-	}
-
-	common.Log.Debug("push ok",
-		zap.Any("payload", payload),
-	)
-	msg.Ack()
-	return
-}
-
-func (x *App) Transform(data M, rules M) (err error) {
-	for key, value := range rules {
-		paths := strings.Split(key, ".")
-		if err = x.Pipe(data, paths, value); err != nil {
-			return
-		}
-	}
-	return
-}
-
-func (x *App) Pipe(input M, paths []string, kind interface{}) (err error) {
-	var cursor interface{} = input
-	n := len(paths) - 1
-	for i, path := range paths[:n] {
-		if path == "$" {
-			for _, item := range cursor.([]interface{}) {
-				if err = x.Pipe(item.(M), paths[i+1:], kind); err != nil {
-					return
-				}
-			}
-			return
-		}
-		if cursor.(M)[path] == nil {
-			return
-		}
-		cursor = cursor.(M)[path]
-	}
-	key := paths[n]
-	if cursor == nil || cursor.(M)[key] == nil || cursor.(M)[key] == "" {
-		return
-	}
-	unknow := cursor.(M)[key]
-	var data interface{}
-	switch kind {
-	case "date":
-		if v, ok := unknow.(string); ok {
-			if data, err = time.Parse(time.RFC1123, v); err != nil {
-				return
-			}
-		}
-		break
-	case "dates":
-		if dates, ok := unknow.([]interface{}); ok {
-			for i, date := range dates {
-				if dates[i], err = time.Parse(time.RFC1123, date.(string)); err != nil {
-					return
-				}
-			}
-			data = dates
-		}
-		break
-	case "timestamp":
-		if v, ok := unknow.(string); ok {
-			if data, err = time.Parse(time.RFC3339, v); err != nil {
-				return
-			}
-		}
-		break
-	case "timestamps":
-		if timestamps, ok := unknow.([]interface{}); ok {
-			for i, timestamp := range timestamps {
-				if timestamps[i], err = time.Parse(time.RFC3339, timestamp.(string)); err != nil {
-					return
-				}
-			}
-			data = timestamps
-		}
-		break
-	case "json":
-		if b, ok := unknow.([]byte); ok {
-			if err = sonic.Unmarshal(b, &data); err != nil {
-				return
-			}
-		}
-		break
-	}
-	cursor.(M)[key] = data
 	return
 }

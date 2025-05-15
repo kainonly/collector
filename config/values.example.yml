@@ -1,10 +1,12 @@
 mode: debug
-namespace: beta
-description: A beta collector
-elastic:
-  hosts: [ ]
-  username: elastic
-  password: <...>
+namespace: alpha
+description: 轻量队列流收集器
 nats:
-  hosts: [ ]
-  token: <...>
+  hosts:
+    - nats://127.0.0.1:1222
+    - nats://127.0.0.1:1223
+    - nats://127.0.0.1:1224
+  token: s3cr3t
+database:
+  url: mongodb://localhost:27017
+  name: example
