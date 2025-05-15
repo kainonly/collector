@@ -1,9 +1,11 @@
 package bootstrap
 
 import (
-	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
-	"github.com/weplanx/collector/v2/common"
+	"github.com/weplanx/collector/v3/common"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -35,15 +37,16 @@ func LoadStaticValues() (v *common.Values, err error) {
 	return
 }
 
-func UseElastic(values *common.Values) (es *elasticsearch.Client, err error) {
-	if es, err = elasticsearch.NewClient(elasticsearch.Config{
-		Addresses: values.Elastic.Hosts,
-		Username:  values.Elastic.Username,
-		Password:  values.Elastic.Password,
-	}); err != nil {
-		return
-	}
-	return
+func UseMongo(v *common.Values) (*mongo.Client, error) {
+	return mongo.Connect(
+		options.Client().ApplyURI(v.Database.Url),
+	)
+}
+
+func UseDatabase(v *common.Values, client *mongo.Client) (db *mongo.Database) {
+	option := options.Database().
+		SetWriteConcern(writeconcern.Majority())
+	return client.Database(v.Database.Name, option)
 }
 
 func UseNats(values *common.Values) (nc *nats.Conn, err error) {
