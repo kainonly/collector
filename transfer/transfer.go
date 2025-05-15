@@ -72,9 +72,10 @@ func (x *Transfer) Add(option Option) (err error) {
 		subjects = append(subjects, sub)
 	}
 	if _, err = x.Js.AddStream(&nats.StreamConfig{
-		Name:      x.StreamName(option.Key),
-		Subjects:  subjects,
-		Retention: nats.WorkQueuePolicy,
+		Name:        x.StreamName(option.Key),
+		Subjects:    subjects,
+		Description: option.Description,
+		Retention:   nats.WorkQueuePolicy,
 	}); err != nil {
 		return
 	}
