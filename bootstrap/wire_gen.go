@@ -18,29 +18,34 @@ func NewApp() (*app.App, error) {
 	if err != nil {
 		return nil, err
 	}
+	conn, err := UseNats(values)
+	if err != nil {
+		return nil, err
+	}
+	jetStream, err := UseJetStream(conn)
+	if err != nil {
+		return nil, err
+	}
+	keyValue, err := UseKeyValue(values, jetStream)
+	if err != nil {
+		return nil, err
+	}
 	client, err := UseMongo(values)
 	if err != nil {
 		return nil, err
 	}
 	database := UseDatabase(values, client)
-	conn, err := UseNats(values)
-	if err != nil {
-		return nil, err
-	}
-	jetStreamContext, err := UseJetStream(conn)
-	if err != nil {
-		return nil, err
-	}
-	keyValue, err := UseKeyValue(values, jetStreamContext)
+	scheduler, err := UseSchedule()
 	if err != nil {
 		return nil, err
 	}
 	inject := &common.Inject{
-		V:  values,
-		Mc: client,
-		Db: database,
-		Js: jetStreamContext,
-		Kv: keyValue,
+		V:        values,
+		Js:       jetStream,
+		Kv:       keyValue,
+		Mc:       client,
+		Db:       database,
+		Schedule: scheduler,
 	}
 	appApp := app.Initialize(inject)
 	return appApp, nil
