@@ -1,7 +1,10 @@
 package bootstrap
 
 import (
+	"context"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/weplanx/collector/v3/common"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -43,12 +46,6 @@ func UseMongo(v *common.Values) (*mongo.Client, error) {
 	)
 }
 
-func UseDatabase(v *common.Values, client *mongo.Client) (db *mongo.Database) {
-	option := options.Database().
-		SetWriteConcern(writeconcern.Majority())
-	return client.Database(v.Database.Name, option)
-}
-
 func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 	if nc, err = nats.Connect(
 		strings.Join(values.Nats.Hosts, ","),
@@ -61,13 +58,23 @@ func UseNats(values *common.Values) (nc *nats.Conn, err error) {
 	return
 }
 
-func UseJetStream(nc *nats.Conn) (nats.JetStreamContext, error) {
-	return nc.JetStream(nats.PublishAsyncMaxPending(256))
+func UseJetStream(nc *nats.Conn) (jetstream.JetStream, error) {
+	return jetstream.New(nc)
 }
 
-func UseKeyValue(values *common.Values, js nats.JetStreamContext) (nats.KeyValue, error) {
-	return js.CreateKeyValue(&nats.KeyValueConfig{
+func UseKeyValue(values *common.Values, js jetstream.JetStream) (jetstream.KeyValue, error) {
+	return js.CreateKeyValue(context.TODO(), jetstream.KeyValueConfig{
 		Bucket:      values.Namespace,
 		Description: values.Description,
 	})
+}
+
+func UseDatabase(v *common.Values, client *mongo.Client) (db *mongo.Database) {
+	option := options.Database().
+		SetWriteConcern(writeconcern.Majority())
+	return client.Database(v.Database.Name, option)
+}
+
+func UseSchedule() (gocron.Scheduler, error) {
+	return gocron.NewScheduler()
 }

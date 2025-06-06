@@ -13,11 +13,12 @@ func NewApp() (*app.App, error) {
 	wire.Build(
 		wire.Struct(new(common.Inject), "*"),
 		LoadStaticValues,
-		UseMongo,
-		UseDatabase,
 		UseNats,
 		UseJetStream,
 		UseKeyValue,
+		UseMongo,
+		UseDatabase,
+		UseSchedule,
 		app.Initialize,
 	)
 	return &app.App{}, nil
