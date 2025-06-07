@@ -41,6 +41,7 @@ func NewApp() (*app.App, error) {
 	}
 	inject := &common.Inject{
 		V:        values,
+		Nc:       conn,
 		Js:       jetStream,
 		Kv:       keyValue,
 		Mc:       client,

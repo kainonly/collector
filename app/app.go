@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/bytedance/sonic"
 	"github.com/go-co-op/gocron/v2"
+	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/weplanx/collector/v3/common"
 	"go.uber.org/zap"
@@ -16,33 +17,33 @@ import (
 type App struct {
 	*common.Inject
 
-	*M[string, jetstream.Consumer]
+	*M[string, gocron.Job]
 }
 
 type M[K comparable, S any] struct {
 	m sync.Map
 }
 
-func (x *M[K, S]) Create(key K, v S) {
+func (x *M[K, S]) LinkJob(key K, v S) {
 	x.m.Store(key, v)
 }
 
-func (x *M[K, S]) Destroy(key K) S {
-	if value, ok := x.m.LoadAndDelete(key); ok {
+func (x *M[K, S]) Job(key K) S {
+	if value, ok := x.m.Load(key); ok {
 		return value.(S)
 	}
 	var zero S
 	return zero
 }
 
-func (x *M[K, S]) Remove(key K) {
+func (x *M[K, S]) UnLinkJob(key K) {
 	x.m.Delete(key)
 }
 
 func Initialize(i *common.Inject) (x *App) {
 	return &App{
 		Inject: i,
-		M:      &M[string, jetstream.Consumer]{m: sync.Map{}},
+		M:      &M[string, gocron.Job]{m: sync.Map{}},
 	}
 }
 
@@ -77,22 +78,21 @@ func (x *App) Run(ctx context.Context) (err error) {
 		}
 		var option Option
 		if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
-			common.Log.Error("option decoding fail",
-				zap.ByteString("data", entry.Value()),
+			common.Log.Error("decoding fail",
+				zap.String("key", key),
 				zap.Error(err),
 			)
 			return
 		}
 		if err = x.Subscribe(option); err != nil {
-			common.Log.Error("subscription create fail",
+			common.Log.Error("subscribe fail",
 				zap.String("key", key),
-				zap.String("subject", x.SubName(key)),
 				zap.Error(err),
 			)
 		}
 	}
 	x.Schedule.Start()
-	common.Log.Info(`collector service has been initialized successfully.`)
+	common.Log.Info(`service initialized successfully.`)
 
 	var watch jetstream.KeyWatcher
 	if watch, err = x.Kv.WatchAll(ctx); err != nil {
@@ -110,25 +110,22 @@ func (x *App) Run(ctx context.Context) (err error) {
 		case jetstream.KeyValuePut:
 			var option Option
 			if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
-				common.Log.Error("option decoding fail",
+				common.Log.Error("decoding fail",
 					zap.ByteString("data", entry.Value()),
 					zap.Error(err),
 				)
 				return
 			}
-
 			if err = x.Subscribe(option); err != nil {
-				common.Log.Error("subscription faild",
+				common.Log.Error("subscribe fail",
 					zap.String("key", key),
-					zap.String("subject", x.SubName(key)),
 					zap.Error(err),
 				)
 			}
 			break
-		case jetstream.KeyValueDelete:
-		case jetstream.KeyValuePurge:
+		case jetstream.KeyValueDelete, jetstream.KeyValuePurge:
 			if err = x.Unsubscribe(key); err != nil {
-				common.Log.Error("unsubscription faild",
+				common.Log.Error("unsubscribe fail",
 					zap.String("key", key),
 					zap.Error(err),
 				)
@@ -149,11 +146,12 @@ func (x *App) Subscribe(option Option) (err error) {
 		return
 	}
 
-	if _, err = x.Schedule.NewJob(
+	var job gocron.Job
+	if job, err = x.Schedule.NewJob(
 		gocron.DurationJob(x.V.Duration),
 		gocron.NewTask(func(o Option, c jetstream.Consumer) {
 			if errX := x.Task(o, c); errX != nil {
-				common.Log.Error("task faild",
+				common.Log.Error("task fail",
 					zap.String("key", o.Key),
 					zap.Error(errX),
 				)
@@ -164,8 +162,8 @@ func (x *App) Subscribe(option Option) (err error) {
 		return
 	}
 
-	x.Create(option.Key, consumer)
-	common.Log.Debug("create ok",
+	x.LinkJob(option.Key, job)
+	common.Log.Info("subscribe ok",
 		zap.String("key", option.Key),
 		zap.String("subject", x.SubName(option.Key)),
 	)
@@ -177,7 +175,7 @@ func (x *App) Task(option Option, consumer jetstream.Consumer) (err error) {
 	defer cancel()
 
 	var msgBatch jetstream.MessageBatch
-	if msgBatch, err = consumer.FetchNoWait(1000); err != nil {
+	if msgBatch, err = consumer.FetchNoWait(x.V.Batch); err != nil {
 		return
 	}
 
@@ -187,7 +185,12 @@ func (x *App) Task(option Option, consumer jetstream.Consumer) (err error) {
 		documents = append(documents, msg.Data())
 		msgs = append(msgs, msg)
 	}
+
 	if len(documents) == 0 {
+		common.Log.Debug("task ok",
+			zap.String("key", option.Key),
+			zap.Int("documents", len(documents)),
+		)
 		return
 	}
 
@@ -203,9 +206,9 @@ func (x *App) Task(option Option, consumer jetstream.Consumer) (err error) {
 		msg.Ack()
 	}
 
-	common.Log.Debug("task ok",
+	common.Log.Info("task ok",
 		zap.String("key", option.Key),
-		zap.String("subject", x.SubName(option.Key)),
+		zap.Int("documents", len(documents)),
 	)
 	return
 }
@@ -217,10 +220,50 @@ func (x *App) Unsubscribe(key string) (err error) {
 	if err = x.Js.DeleteStream(ctx, x.StreamName(key)); err != nil {
 		return
 	}
-	x.Remove(key)
+	x.UnLinkJob(key)
 	x.Schedule.RemoveByTags(key)
-	common.Log.Debug("destroy ok",
+	common.Log.Info("unsubscribe ok",
 		zap.String("key", key),
 	)
 	return
+}
+
+func (x *App) States() (err error) {
+	if _, err = x.Nc.Subscribe(fmt.Sprintf(`%s.states`, x.V.Namespace), func(m *nats.Msg) {
+		key := string(m.Data)
+		b, errX := x.LoadState(key)
+		if errX != nil {
+			common.Log.Error("load state fail",
+				zap.String("key", key),
+				zap.Error(errX),
+			)
+			return
+		}
+
+		if errX = x.Nc.Publish(m.Reply, b); errX != nil {
+			common.Log.Error("publish state fail",
+				zap.String("key", key),
+				zap.Error(errX),
+			)
+		}
+	}); err != nil {
+		return
+	}
+	return
+}
+
+type State struct {
+	Nexts []time.Time `json:"nexts"`
+	Last  time.Time   `json:"last"`
+}
+
+func (x *App) LoadState(key string) (b []byte, err error) {
+	job, state := x.Job(key), new(State)
+	if state.Nexts, err = job.NextRuns(5); err != nil {
+		return
+	}
+	if state.Last, err = job.LastRun(); err != nil {
+		return
+	}
+	return sonic.Marshal(state)
 }
