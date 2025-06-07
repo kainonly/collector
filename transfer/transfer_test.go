@@ -46,59 +46,38 @@ func MakeTransfer() (err error) {
 func TestTransfer_Add(t *testing.T) {
 	ctx := context.TODO()
 	err := x.Add(ctx, transfer.Option{
-		Key:         "alpha",
-		Description: "开发测试版",
+		Key:         "audit",
+		Description: "审计流",
 	})
 	assert.Nil(t, err)
 }
 
 func TestTransfer_Get(t *testing.T) {
 	ctx := context.TODO()
-	_, err := x.Get(ctx, `beta`)
+	_, err := x.Get(ctx, `audit`)
 	assert.Error(t, err)
-	result, err := x.Get(ctx, `alpha`)
+	result, err := x.Get(ctx, `audit`)
 	assert.Nil(t, err)
 	t.Log(result)
 }
 
-type OriginData struct {
+type MsgData struct {
 	ID        bson.ObjectID `bson:"_id"`
 	Timestamp time.Time     `bson:"timestamp"`
 	Msg       string        `bson:"msg"`
 }
 
-//var originData = OriginData{
-//	ID:        bson.NewObjectID(),
-//	Timestamp: time.Now(),
-//	Msg:       `从生产者到 MongoDB 均不涉及 JSON 转换`,
-//}
-
-//func TestTransfer_Send(t *testing.T) {
-//	var wg sync.WaitGroup
-//	wg.Add(1)
-//	queueName := x.StreamName(`alpha`)
-//	subjectName := x.SubName(`alpha`)
-//	go js.QueueSubscribe(subjectName, queueName, func(msg *nats.Msg) {
-//		t.Log("get", string(msg.Data))
-//		var data OriginData
-//		if err := bson.Unmarshal(msg.Data, &data); err != nil {
-//			t.Error()
-//		}
-//		t.Log(data)
-//		assert.Equal(t, data.ID.Hex(), originData.ID.Hex())
-//		assert.Equal(t, data.Timestamp.UnixNano(), originData.Timestamp.UnixNano())
-//		assert.Equal(t, data.Msg, originData.Msg)
-//		wg.Done()
-//	})
-//	time.Sleep(time.Second)
-//	err := x.Send("alpha", originData)
-//	assert.NoError(t, err)
-//	t.Log("send")
-//	wg.Wait()
-//}
+func TestTransfer_Send(t *testing.T) {
+	err := x.Send(`audit`, MsgData{
+		ID:        bson.NewObjectID(),
+		Timestamp: time.Now(),
+		Msg:       `从生产者到 MongoDB 均不涉及 JSON 转换`,
+	})
+	assert.NoError(t, err)
+}
 
 func TestTransfer_Remove(t *testing.T) {
 	ctx := context.TODO()
-	err := x.Remove(ctx, "beta")
+	err := x.Remove(ctx, "audit")
 	assert.Nil(t, err)
 }

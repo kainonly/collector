@@ -2,6 +2,7 @@ mode: debug
 namespace: alpha
 description: 轻量队列流收集器
 duration: 5s
+batch: 1000
 nats:
   hosts:
     - nats://127.0.0.1:1222

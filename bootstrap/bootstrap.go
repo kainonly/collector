@@ -63,9 +63,11 @@ func UseJetStream(nc *nats.Conn) (jetstream.JetStream, error) {
 }
 
 func UseKeyValue(values *common.Values, js jetstream.JetStream) (jetstream.KeyValue, error) {
-	return js.CreateKeyValue(context.TODO(), jetstream.KeyValueConfig{
+	return js.CreateOrUpdateKeyValue(context.TODO(), jetstream.KeyValueConfig{
 		Bucket:      values.Namespace,
 		Description: values.Description,
+		History:     3,
+		Compression: true,
 	})
 }
 
