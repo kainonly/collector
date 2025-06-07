@@ -3,13 +3,63 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/bytedance/sonic"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/weplanx/collector/v3/common"
 	"go.uber.org/zap"
+	"sync"
 	"time"
 )
+
+type App struct {
+	*common.Inject
+
+	*M[string, jetstream.Consumer]
+}
+
+type M[K comparable, S any] struct {
+	m sync.Map
+}
+
+func (x *M[K, S]) Create(key K, v S) {
+	x.m.Store(key, v)
+}
+
+func (x *M[K, S]) Destroy(key K) S {
+	if value, ok := x.m.LoadAndDelete(key); ok {
+		return value.(S)
+	}
+	var zero S
+	return zero
+}
+
+func (x *M[K, S]) Remove(key K) {
+	x.m.Delete(key)
+}
+
+func Initialize(i *common.Inject) (x *App) {
+	return &App{
+		Inject: i,
+		M:      &M[string, jetstream.Consumer]{m: sync.Map{}},
+	}
+}
+
+type Option struct {
+	Key         string   `json:"key"`
+	Subs        []string `json:"subs"`
+	Collection  string   `json:"collection"`
+	Description string   `json:"description"`
+}
+
+func (x *App) StreamName(key string) string {
+	return fmt.Sprintf(`%s_%s`, x.V.Namespace, key)
+}
+
+func (x *App) SubName(key string) string {
+	return fmt.Sprintf(`%s.%s`, x.V.Namespace, key)
+}
 
 func (x *App) Run(ctx context.Context) (err error) {
 	var keys []string
@@ -41,6 +91,7 @@ func (x *App) Run(ctx context.Context) (err error) {
 			)
 		}
 	}
+	x.Schedule.Start()
 	common.Log.Info(`collector service has been initialized successfully.`)
 
 	var watch jetstream.KeyWatcher
@@ -67,7 +118,7 @@ func (x *App) Run(ctx context.Context) (err error) {
 			}
 
 			if err = x.Subscribe(option); err != nil {
-				common.Log.Error("subscription create faild",
+				common.Log.Error("subscription faild",
 					zap.String("key", key),
 					zap.String("subject", x.SubName(key)),
 					zap.Error(err),
@@ -77,7 +128,10 @@ func (x *App) Run(ctx context.Context) (err error) {
 		case jetstream.KeyValueDelete:
 		case jetstream.KeyValuePurge:
 			if err = x.Unsubscribe(key); err != nil {
-
+				common.Log.Error("unsubscription faild",
+					zap.String("key", key),
+					zap.Error(err),
+				)
 			}
 			break
 		}
@@ -87,19 +141,25 @@ func (x *App) Run(ctx context.Context) (err error) {
 }
 
 func (x *App) Subscribe(option Option) (err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	var consumer jetstream.Consumer
-	if consumer, err = x.Js.Consumer(ctx, option.Key, `default`); err != nil {
+	if consumer, err = x.Js.Consumer(ctx, x.StreamName(option.Key), `default`); err != nil {
 		return
 	}
 
 	if _, err = x.Schedule.NewJob(
-		gocron.DurationJob(5*time.Second),
-		gocron.NewTask(x.Task, option),
+		gocron.DurationJob(x.V.Duration),
+		gocron.NewTask(func(o Option, c jetstream.Consumer) {
+			if errX := x.Task(o, c); errX != nil {
+				common.Log.Error("task faild",
+					zap.String("key", o.Key),
+					zap.Error(errX),
+				)
+			}
+		}, option, consumer),
 		gocron.WithTags(option.Key),
-		gocron.WithContext(ctx),
 	); err != nil {
 		return
 	}
@@ -113,11 +173,11 @@ func (x *App) Subscribe(option Option) (err error) {
 }
 
 func (x *App) Task(option Option, consumer jetstream.Consumer) (err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	var msgBatch jetstream.MessageBatch
-	if msgBatch, err = consumer.FetchNoWait(5000); err != nil {
+	if msgBatch, err = consumer.FetchNoWait(1000); err != nil {
 		return
 	}
 
@@ -126,6 +186,9 @@ func (x *App) Task(option Option, consumer jetstream.Consumer) (err error) {
 	for msg := range msgBatch.Messages() {
 		documents = append(documents, msg.Data())
 		msgs = append(msgs, msg)
+	}
+	if len(documents) == 0 {
+		return
 	}
 
 	name := option.Key
@@ -140,6 +203,10 @@ func (x *App) Task(option Option, consumer jetstream.Consumer) (err error) {
 		msg.Ack()
 	}
 
+	common.Log.Debug("task ok",
+		zap.String("key", option.Key),
+		zap.String("subject", x.SubName(option.Key)),
+	)
 	return
 }
 

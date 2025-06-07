@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/weplanx/collector/v3/bootstrap"
 	"github.com/weplanx/collector/v3/common"
 	"os"
@@ -16,9 +17,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err = app.Run(); err != nil {
+
+	ctx := context.Background()
+	if err = app.Run(ctx); err != nil {
 		panic(err)
 	}
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
