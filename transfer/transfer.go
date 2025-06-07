@@ -5,24 +5,27 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bytedance/sonic"
+	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"strings"
+	"time"
 )
 
 type Transfer struct {
 	Namespace string
+	Nc        *nats.Conn
 	Js        jetstream.JetStream
 	Kv        jetstream.KeyValue
 }
 
-func New(ctx context.Context, namespace string, js jetstream.JetStream) (x *Transfer, err error) {
+func New(ctx context.Context, namespace string, nc *nats.Conn, opts ...jetstream.JetStreamOpt) (x *Transfer, err error) {
 	if strings.Contains(namespace, "-") {
 		return nil, errors.New(`namespace cannot contain '-'`)
 	}
-	x = &Transfer{
-		Namespace: namespace,
-		Js:        js,
+	x = &Transfer{Namespace: namespace, Nc: nc}
+	if x.Js, err = jetstream.New(nc, opts...); err != nil {
+		return
 	}
 	if x.Kv, err = x.Js.KeyValue(ctx, x.Namespace); err != nil {
 		return
@@ -39,11 +42,16 @@ func (x *Transfer) SubName(key string) string {
 }
 
 type Option struct {
-	Key         string                `json:"key"`
-	Subs        []string              `json:"subs"`
-	Description string                `json:"description"`
-	Collection  string                `json:"collection"`
-	Info        *jetstream.StreamInfo `json:"info,omitempty"`
+	Key         string   `json:"key"`
+	Subs        []string `json:"subs"`
+	Description string   `json:"description"`
+	Collection  string   `json:"collection"`
+	*State
+}
+
+type State struct {
+	Nexts []time.Time `json:"nexts,omitempty"`
+	Last  time.Time   `json:"last,omitempty"`
 }
 
 func (x *Transfer) Get(ctx context.Context, key string) (option *Option, err error) {
@@ -54,11 +62,11 @@ func (x *Transfer) Get(ctx context.Context, key string) (option *Option, err err
 	if err = sonic.Unmarshal(entry.Value(), &option); err != nil {
 		return
 	}
-	var stream jetstream.Stream
-	if stream, err = x.Js.Stream(ctx, x.StreamName(key)); err != nil {
+	var msg *nats.Msg
+	if msg, err = x.Nc.Request(fmt.Sprintf(`%s.states`, x.Namespace), []byte(key), 15*time.Second); err != nil {
 		return
 	}
-	if option.Info, err = stream.Info(ctx); err != nil {
+	if err = sonic.Unmarshal(msg.Data, &option.State); err != nil {
 		return
 	}
 	return
@@ -97,10 +105,6 @@ func (x *Transfer) Add(ctx context.Context, option Option) (err error) {
 	return
 }
 
-func (x *Transfer) Remove(ctx context.Context, key string) (err error) {
-	return x.Kv.Delete(ctx, key)
-}
-
 func (x *Transfer) Send(key string, data any) (err error) {
 	var content []byte
 	if content, err = bson.Marshal(data); err != nil {
@@ -110,4 +114,8 @@ func (x *Transfer) Send(key string, data any) (err error) {
 		return
 	}
 	return
+}
+
+func (x *Transfer) Remove(ctx context.Context, key string) (err error) {
+	return x.Kv.Delete(ctx, key)
 }

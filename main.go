@@ -17,6 +17,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if err = app.States(); err != nil {
+		panic(err)
+	}
 
 	ctx := context.Background()
 	if err = app.Run(ctx); err != nil {

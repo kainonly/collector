@@ -3,7 +3,6 @@ package transfer_test
 import (
 	"context"
 	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/jetstream"
 	"github.com/stretchr/testify/assert"
 	"github.com/weplanx/collector/v3/transfer"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -13,7 +12,6 @@ import (
 )
 
 var x *transfer.Transfer
-var js jetstream.JetStream
 
 func TestMain(m *testing.M) {
 	var err error
@@ -34,10 +32,7 @@ func MakeTransfer() (err error) {
 		return
 	}
 
-	if js, err = jetstream.New(nc); err != nil {
-		return
-	}
-	if x, err = transfer.New(context.TODO(), `alpha`, js); err != nil {
+	if x, err = transfer.New(context.TODO(), `alpha`, nc); err != nil {
 		return
 	}
 	return
@@ -54,11 +49,11 @@ func TestTransfer_Add(t *testing.T) {
 
 func TestTransfer_Get(t *testing.T) {
 	ctx := context.TODO()
-	_, err := x.Get(ctx, `audit`)
-	assert.Error(t, err)
 	result, err := x.Get(ctx, `audit`)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	t.Log(result)
+	t.Log(result.Nexts)
+	t.Log(result.Last)
 }
 
 type MsgData struct {
