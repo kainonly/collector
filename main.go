@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-	"github.com/weplanx/collector/v3/bootstrap"
-	"github.com/weplanx/collector/v3/common"
 	"os"
 	"os/signal"
+
+	"github.com/kainonly/collector/v3/bootstrap"
+	"github.com/kainonly/collector/v3/common"
 )
 
 func main() {

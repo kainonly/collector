@@ -1,27 +1,28 @@
-module github.com/weplanx/collector/v3
+module github.com/kainonly/collector/v3
 
-go 1.23.0
+go 1.24.0
 
 require (
-	github.com/bytedance/sonic v1.13.3
-	github.com/go-co-op/gocron/v2 v2.16.2
-	github.com/google/wire v0.6.0
-	github.com/nats-io/nats.go v1.43.0
-	github.com/stretchr/testify v1.10.0
-	go.mongodb.org/mongo-driver/v2 v2.2.2
+	github.com/bytedance/sonic v1.14.1
+	github.com/go-co-op/gocron/v2 v2.16.6
+	github.com/google/wire v0.7.0
+	github.com/nats-io/nats.go v1.46.1
+	github.com/stretchr/testify v1.11.1
+	go.mongodb.org/mongo-driver/v2 v2.3.0
 	go.uber.org/zap v1.27.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/bytedance/sonic/loader v0.2.4 // indirect
-	github.com/cloudwego/base64x v0.1.5 // indirect
+	github.com/bytedance/gopkg v0.1.3 // indirect
+	github.com/bytedance/sonic/loader v0.3.0 // indirect
+	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
-	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/nats-io/nkeys v0.4.11 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect

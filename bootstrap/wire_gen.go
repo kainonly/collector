@@ -7,8 +7,8 @@
 package bootstrap
 
 import (
-	"github.com/weplanx/collector/v3/app"
-	"github.com/weplanx/collector/v3/common"
+	"github.com/kainonly/collector/v3/app"
+	"github.com/kainonly/collector/v3/common"
 )
 
 // Injectors from wire.go:
