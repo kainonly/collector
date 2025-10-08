@@ -2,17 +2,18 @@ package bootstrap
 
 import (
 	"context"
+	"os"
+	"strings"
+
 	"github.com/go-co-op/gocron/v2"
+	"github.com/kainonly/collector/v3/common"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	"github.com/weplanx/collector/v3/common"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
-	"os"
-	"strings"
 )
 
 func SetZap() (log *zap.Logger, err error) {

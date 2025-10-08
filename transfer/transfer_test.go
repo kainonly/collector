@@ -2,13 +2,14 @@ package transfer_test
 
 import (
 	"context"
-	"github.com/nats-io/nats.go"
-	"github.com/stretchr/testify/assert"
-	"github.com/weplanx/collector/v3/transfer"
-	"go.mongodb.org/mongo-driver/v2/bson"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/kainonly/collector/v3/transfer"
+	"github.com/nats-io/nats.go"
+	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 var x *transfer.Transfer
