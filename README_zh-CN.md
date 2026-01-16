@@ -6,25 +6,25 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/kainonly/collector?style=flat-square)](https://goreportcard.com/report/github.com/kainonly/collector)
 [![GitHub license](https://img.shields.io/github/license/kainonly/collector?style=flat-square)](https://raw.githubusercontent.com/kainonly/collector/main/LICENSE)
 
-English | [简体中文](README_zh-CN.md)
+[English](README.md) | 简体中文
 
-A streamlined, professional queue-based collector tailored for MongoDB time-series data
+专为 MongoDB 时序数据设计的精简、专业的队列采集器。
 
-## Pre-requisite
+## 前提条件
 
-- A NATS JetStream cluster is required.
-- A MongoDB is required, with version 5.0 or higher.
-- The transfer and collector must use the same NATS cluster, and the same application namespace.
+- 需要 NATS JetStream 集群。
+- 需要 MongoDB，版本 5.0 或更高。
+- 传输（transfer）和采集器（collector）必须使用相同的 NATS 集群和相同的应用命名空间。
 
-## Deploy
+## 部署
 
-A collector service that subscribes to stream queues and then writes to data.
+订阅流队列并将数据写入数据库的采集器服务。
 
-The main container image is:
+主容器镜像为：
 
 - ghcr.io/kainonly/collector:latest
 
-The case will use Kubernetes deployment orchestration, replicate deployment (modify as needed).
+此案例使用 Kubernetes 部署编排，副本部署（请根据需要修改）。
 
 ```yaml
 apiVersion: apps/v1
@@ -46,6 +46,6 @@ spec:
           name: collector
 ```
 
-## License
+## 许可证
 
 [BSD-3-Clause License](https://github.com/kainonly/collector/blob/main/LICENSE)
