@@ -20,6 +20,7 @@ type Transfer struct {
 	Kv        jetstream.KeyValue
 }
 
+// New creates a Transfer instance bound to a namespace KV bucket.
 func New(ctx context.Context, namespace string, nc *nats.Conn, opts ...jetstream.JetStreamOpt) (x *Transfer, err error) {
 	if strings.Contains(namespace, "-") {
 		return nil, errors.New(`namespace cannot contain '-'`)
@@ -55,6 +56,7 @@ type State struct {
 	Last  time.Time   `json:"last,omitempty"`
 }
 
+// Get returns the option from KV and enriches it with state data queried from the collector.
 func (x *Transfer) Get(ctx context.Context, key string) (option *Option, err error) {
 	var entry jetstream.KeyValueEntry
 	if entry, err = x.Kv.Get(ctx, key); err != nil {
@@ -73,6 +75,7 @@ func (x *Transfer) Get(ctx context.Context, key string) (option *Option, err err
 	return
 }
 
+// Add creates/updates a work-queue stream and persists its config into KV.
 func (x *Transfer) Add(ctx context.Context, option Option) (err error) {
 	subjects := []string{x.SubName(option.Key)}
 	for _, sub := range option.Subs {
@@ -106,6 +109,7 @@ func (x *Transfer) Add(ctx context.Context, option Option) (err error) {
 	return
 }
 
+// Send publishes a BSON-encoded payload to the configured subject for key.
 func (x *Transfer) Send(key string, data any) (err error) {
 	var content []byte
 	if content, err = bson.Marshal(data); err != nil {
@@ -117,6 +121,7 @@ func (x *Transfer) Send(key string, data any) (err error) {
 	return
 }
 
+// Remove deletes the configuration from KV (collector will unsubscribe on KV watch).
 func (x *Transfer) Remove(ctx context.Context, key string) (err error) {
 	return x.Kv.Delete(ctx, key)
 }

@@ -2,12 +2,14 @@ package transfer_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/kainonly/collector/v3/transfer"
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -15,6 +17,15 @@ import (
 var x *transfer.Transfer
 
 func TestMain(m *testing.M) {
+	if os.Getenv("TRANSFER_INTEGRATION") != "1" {
+		fmt.Fprintln(os.Stderr, "transfer integration tests are skipped (set TRANSFER_INTEGRATION=1).")
+		os.Exit(0)
+	}
+	if os.Getenv("NATS_HOSTS") == "" {
+		fmt.Fprintln(os.Stderr, "transfer integration tests are skipped (missing NATS_HOSTS).")
+		os.Exit(0)
+	}
+
 	var err error
 	if err = MakeTransfer(); err != nil {
 		panic(err)
@@ -27,10 +38,22 @@ func MakeTransfer() (err error) {
 	if nc, err = nats.Connect(
 		os.Getenv("NATS_HOSTS"),
 		nats.Token(os.Getenv("NATS_TOKEN")),
-		nats.RetryOnFailedConnect(true),
-		nats.MaxReconnects(-1),
+		nats.Timeout(3*time.Second),
 	); err != nil {
 		return
+	}
+
+	js, err := jetstream.New(nc)
+	if err != nil {
+		return err
+	}
+	if _, err = js.CreateOrUpdateKeyValue(context.TODO(), jetstream.KeyValueConfig{
+		Bucket:      "alpha",
+		Description: "test bucket",
+		History:     3,
+		Compression: true,
+	}); err != nil {
+		return err
 	}
 
 	if x, err = transfer.New(context.TODO(), `alpha`, nc); err != nil {

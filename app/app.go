@@ -41,6 +41,7 @@ func (x *M[K, S]) UnLinkJob(key K) {
 	x.m.Delete(key)
 }
 
+// Initialize constructs an App with injected dependencies.
 func Initialize(i *common.Inject) (x *App) {
 	return &App{
 		Inject: i,
@@ -63,6 +64,7 @@ func (x *App) SubName(key string) string {
 	return fmt.Sprintf(`%s.%s`, x.V.Namespace, key)
 }
 
+// Run loads all stream configs from KV, schedules jobs, and watches KV changes.
 func (x *App) Run(ctx context.Context) (err error) {
 	var keys []string
 	if keys, err = x.Kv.Keys(ctx); errors.Is(err, jetstream.ErrNoObjectsFound) {
@@ -138,6 +140,7 @@ func (x *App) Run(ctx context.Context) (err error) {
 	return
 }
 
+// Subscribe schedules a periodic task for a key using its stream's default consumer.
 func (x *App) Subscribe(option Option) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -171,6 +174,7 @@ func (x *App) Subscribe(option Option) (err error) {
 	return
 }
 
+// Task fetches up to Batch messages and inserts them into MongoDB, ACKing on success.
 func (x *App) Task(option Option, consumer jetstream.Consumer) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -214,6 +218,7 @@ func (x *App) Task(option Option, consumer jetstream.Consumer) (err error) {
 	return
 }
 
+// Unsubscribe deletes the stream and removes its scheduled job.
 func (x *App) Unsubscribe(key string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -229,6 +234,7 @@ func (x *App) Unsubscribe(key string) (err error) {
 	return
 }
 
+// States registers a request/reply endpoint for querying scheduled job state.
 func (x *App) States() (err error) {
 	if _, err = x.Nc.Subscribe(fmt.Sprintf(`%s.states`, x.V.Namespace), func(m *nats.Msg) {
 		key := string(m.Data)
@@ -258,6 +264,7 @@ type State struct {
 	Last  time.Time   `json:"last"`
 }
 
+// LoadState returns next runs and last run time for a scheduled job.
 func (x *App) LoadState(key string) (b []byte, err error) {
 	job, state := x.Job(key), new(State)
 	if state.Nexts, err = job.NextRuns(5); err != nil {

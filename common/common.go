@@ -12,6 +12,7 @@ import (
 
 var Log *zap.Logger
 
+// Inject groups the runtime dependencies required by the collector app.
 type Inject struct {
 	V        *Values
 	Nc       *nats.Conn
@@ -22,6 +23,7 @@ type Inject struct {
 	Schedule gocron.Scheduler
 }
 
+// Values is loaded from config/values.yml.
 type Values struct {
 	Mode        string        `yaml:"mode"`
 	Namespace   string        `yaml:"namespace"`
@@ -32,11 +34,13 @@ type Values struct {
 	Database    Database      `yaml:"database"`
 }
 
+// Nats contains NATS client settings.
 type Nats struct {
 	Hosts []string `yaml:"hosts"`
 	Token string   `yaml:"token"`
 }
 
+// Database contains MongoDB client settings.
 type Database struct {
 	Url  string `yaml:"url"`
 	Name string `yaml:"name"`
