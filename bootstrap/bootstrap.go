@@ -81,3 +81,23 @@ func UseDatabase(v *common.Values, client *mongo.Client) (db *mongo.Database) {
 func UseSchedule() (gocron.Scheduler, error) {
 	return gocron.NewScheduler()
 }
+
+func NewInject(
+	v *common.Values,
+	nc *nats.Conn,
+	js jetstream.JetStream,
+	kv jetstream.KeyValue,
+	mc *mongo.Client,
+	db *mongo.Database,
+	schedule gocron.Scheduler,
+) *common.Inject {
+	return &common.Inject{
+		V:        v,
+		Nc:       nc,
+		Js:       js,
+		Kv:       kv,
+		Mc:       mc,
+		Db:       db,
+		Schedule: schedule,
+	}
+}

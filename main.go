@@ -14,7 +14,8 @@ func main() {
 	if common.Log, err = bootstrap.SetZap(); err != nil {
 		panic(err)
 	}
-	app, err := bootstrap.NewApp()
+	ctx := context.Background()
+	app, err := bootstrap.NewApp(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -22,7 +23,6 @@ func main() {
 		panic(err)
 	}
 
-	ctx := context.Background()
 	if err = app.Run(ctx); err != nil {
 		panic(err)
 	}

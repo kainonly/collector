@@ -1,25 +1,25 @@
 //go:build wireinject
-// +build wireinject
 
 package bootstrap
 
 import (
-	"github.com/google/wire"
+	"context"
+
+	"github.com/goforj/wire"
 	"github.com/kainonly/collector/v3/app"
-	"github.com/kainonly/collector/v3/common"
 )
 
-func NewApp() (*app.App, error) {
+func NewApp(ctx context.Context) (*app.App, error) {
 	wire.Build(
-		wire.Struct(new(common.Inject), "*"),
 		LoadStaticValues,
 		UseNats,
+		UseMongo,
 		UseJetStream,
 		UseKeyValue,
-		UseMongo,
 		UseDatabase,
 		UseSchedule,
+		NewInject,
 		app.Initialize,
 	)
-	return &app.App{}, nil
+	return nil, nil
 }
