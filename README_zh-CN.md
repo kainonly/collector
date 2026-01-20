@@ -8,110 +8,147 @@
 
 [English](README.md) | 简体中文
 
-专为 MongoDB 时序数据设计的精简队列采集器。
+轻量级时序数据采集服务。从 NATS JetStream 工作队列流中消费 BSON 数据，批量写入 MongoDB。
 
-它从 NATS JetStream 的 WorkQueue 流中消费 BSON 负载，并按固定周期批量写入 MongoDB。流与定时任务通过 JetStream KeyValue（命名空间）动态管理。
+## 概览
+
+![架构图](docs/plan.png)
+
+## 特性
+
+- 基于推送的 NATS JetStream 消息消费
+- 可配置缓冲区的 MongoDB 批量写入
+- 通过 JetStream KeyValue 动态管理流
+- KV PUT 自动订阅，KV DELETE 自动取消订阅
+- 优雅关闭，确保最后一次缓冲刷新
+- 云原生设计：单收集器支持多流，水平扩展
 
 ## 前提条件
 
-- 需要 NATS JetStream 集群。
-- 需要 MongoDB，版本 5.0 或更高。
-- 传输库（transfer）与采集服务（collector）必须使用相同的 NATS 集群与相同的命名空间。
-
-## 工作原理
-
-1. 生产端（通过 `transfer` 包）注册一个 key：
-   - 创建/更新 JetStream Stream，命名为 `${namespace}_${key}`（WorkQueue 保留策略）
-   - 创建/更新 Durable Consumer，名称为 `default`
-   - 将配置以 JSON 写入 KV Bucket `${namespace}`（KV 的 key 为 `${key}`）
-2. Collector 启动后：
-   - 从 KV Bucket 加载全部 key
-   - 为每个 key 按 `duration` 创建一个定时任务
-   - 每次任务运行从 Consumer 拉取最多 `batch` 条消息，写入 MongoDB（`InsertMany`），成功后 ACK
-3. Collector 持续监听 KV 变化：
-   - `PUT` => 自动订阅并创建/更新定时任务
-   - `DELETE/PURGE` => 删除对应 Stream 并移除定时任务
-4. Collector 通过 `${namespace}.states` 提供状态查询（Request/Reply），返回下一次运行时间列表与上一次运行时间。
+- NATS JetStream 集群
+- MongoDB 5.0+
 
 ## 配置
 
-Collector 从 `./config/values.yml` 读取 YAML 配置。
-
-建议从 [values.example.yml](config/values.example.yml) 开始，复制到 `config/values.yml` 并按环境修改。
+创建 `config/values.yml`：
 
 ```yaml
 mode: debug
 namespace: alpha
-description: 轻量队列流收集器
-duration: 5s
-batch: 1000
-nats:
-  hosts:
-    - nats://127.0.0.1:4222
-  token: your_token
-database:
-  url: mongodb://localhost:27017
-  name: example
+batch_size: 1000
+flush_interval: 5s
+nats_hosts:
+  - nats://127.0.0.1:4222
+nats_token: your-token
+mongo_url: mongodb://localhost:27017
+mongo_database: example
 ```
 
-- `mode`: `debug` / `release`（日志使用 zap；设置 `MODE=release` 会启用生产日志）
-- `namespace`: KV Bucket 名称、Stream 名称前缀、状态查询 subject 前缀
-- `duration`: 定时周期（`time.Duration` 格式，例如 `5s`、`1m`）
-- `batch`: 单次任务最大拉取消息数
+| 字段 | 说明 |
+|------|------|
+| `mode` | `debug` 或 `release` |
+| `namespace` | 应用命名空间，用于流/KV 命名 |
+| `batch_size` | 达到此数量时刷新缓冲区 |
+| `flush_interval` | 按此间隔刷新缓冲区 |
+| `nats_hosts` | NATS 服务器地址 |
+| `nats_token` | NATS 认证令牌 |
+| `mongo_url` | MongoDB 连接 URL |
+| `mongo_database` | MongoDB 数据库名 |
 
-## 本地快速开始
+## 数据流
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   应用服务   │     │   应用服务   │     │   应用服务   │
+└──────┬──────┘     └──────┬──────┘     └──────┬──────┘
+       │                   │                   │
+       └───────────────────┼───────────────────┘
+                           │ 发送 BSON
+                           ▼
+                  ┌─────────────────┐
+                  │  Transfer SDK   │
+                  │   发布 BSON     │
+                  └────────┬────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     NATS JetStream                          │
+│  Stream: {namespace}_{key}                                  │
+│  Subject: {namespace}.{key}                                 │
+│  Consumer: default (WorkQueue)                              │
+│  KV Bucket: {namespace}                                     │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ Consume()
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Collector Pod                            │
+│                                                             │
+│   消息 ──► 缓冲区 ──► 刷新 ──► InsertMany                    │
+│              │                                              │
+│      (batch_size 或 flush_interval)                         │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ 成功: ACK / 失败: NAK
+                            ▼
+                  ┌─────────────────────────┐
+                  │        MongoDB          │
+                  └─────────────────────────┘
+```
+
+## Transfer SDK
+
+用于管理流和发布 BSON 数据的客户端 SDK。
+
+```go
+import (
+    "context"
+    "time"
+
+    "github.com/kainonly/collector/v3/transfer"
+    "github.com/nats-io/nats.go"
+    "go.mongodb.org/mongo-driver/v2/bson"
+)
+
+func main() {
+    ctx := context.Background()
+    nc, _ := nats.Connect("nats://127.0.0.1:4222", nats.Token("your-token"))
+
+    // 创建客户端
+    t, _ := transfer.New(ctx, "alpha", nc)
+
+    // 注册流
+    t.Add(ctx, transfer.Option{
+        Key:         "metrics",
+        Collection:  "metrics",
+        Description: "指标流",
+    })
+
+    // 发布 BSON 数据
+    t.Send("metrics", bson.M{
+        "ts":  time.Now(),
+        "cpu": 0.42,
+    })
+
+    // 查询收集器状态
+    option, _ := t.Get(ctx, "metrics")
+    fmt.Println(option.BufferSize)
+
+    // 移除流
+    t.Remove(ctx, "metrics")
+}
+```
+
+## 快速开始
 
 ```bash
 cp config/values.example.yml config/values.yml
 go run .
 ```
 
-## 生产端用法（transfer）
-
-`transfer` 包用于管理 JetStream stream/KV 配置并发布 BSON 负载。
-
-```go
-package main
-
-import (
-	"context"
-	"time"
-
-	"github.com/kainonly/collector/v3/transfer"
-	"github.com/nats-io/nats.go"
-	"go.mongodb.org/mongo-driver/v2/bson"
-)
-
-func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	nc, _ := nats.Connect("nats://127.0.0.1:4222", nats.Token("your_token"))
-	t, _ := transfer.New(ctx, "alpha", nc)
-
-	_ = t.Add(ctx, transfer.Option{
-		Key:         "metrics",
-		Subs:        []string{"external.subject"},
-		Collection:  "metrics",
-		Description: "example stream",
-	})
-
-	_ = t.Send("metrics", bson.M{
-		"ts":  time.Now(),
-		"cpu": 0.42,
-	})
-}
-```
-
 ## 部署
 
-主容器镜像为：
+容器镜像：`ghcr.io/kainonly/collector:latest`
 
-- `ghcr.io/kainonly/collector:latest`
-
-镜像内二进制为 `/app/collector`，并从 `./config/values.yml`（相对工作目录）读取配置。
-
-Kubernetes 部署示例（挂载您的 `config/values.yml`）：
+Kubernetes 部署示例：
 
 ```yaml
 apiVersion: apps/v1
@@ -140,14 +177,15 @@ spec:
             name: collector-config
 ```
 
-## 目录结构
+## 项目结构
 
-- `main.go`: 入口
-- `bootstrap/`: 配置与依赖初始化（NATS、JetStream、KV、MongoDB、scheduler）
-- `app/`: Collector 运行时（KV watch、定时拉取、写入 MongoDB）
-- `transfer/`: 生产端辅助库（stream/KV 管理 + publish）
-- `config/`: 配置示例
+- `main.go` - 入口
+- `bootstrap/` - 配置与依赖初始化
+- `app/` - 收集器运行时（KV 监听、缓冲区、MongoDB 写入）
+- `transfer/` - 生产者 SDK（流/KV 管理 + 发布）
+- `common/` - 共享类型和日志
+- `config/` - 配置示例
 
 ## 许可证
 
-[BSD-3-Clause License](https://github.com/kainonly/collector/blob/main/LICENSE)
+[BSD-3-Clause License](LICENSE)

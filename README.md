@@ -8,110 +8,147 @@
 
 English | [简体中文](README_zh-CN.md)
 
-A streamlined, queue-based collector tailored for MongoDB time-series data.
+A lightweight service for collecting and persisting time-series data. It consumes BSON payloads from NATS JetStream work-queue streams and batch writes them to MongoDB.
 
-It consumes BSON payloads from NATS JetStream work-queue streams and writes batches into MongoDB on a fixed schedule. Streams and schedules are managed dynamically through a JetStream KeyValue bucket (namespace).
+## Overview
 
-## Pre-requisite
+![Architecture](docs/plan.png)
 
-- A NATS JetStream cluster is required.
-- A MongoDB is required, with version 5.0 or higher.
-- The transfer library and collector service must use the same NATS cluster and the same namespace.
+## Features
 
-## How It Works
+- Push-based message consumption from NATS JetStream
+- Batch writes to MongoDB with configurable buffer
+- Dynamic stream management via JetStream KeyValue
+- Auto-subscribe on KV PUT, auto-unsubscribe on KV DELETE
+- Graceful shutdown with final buffer flush
+- Cloud-native design: multiple streams per collector, scale horizontally
 
-1. A producer (via the `transfer` package) registers a key by:
-   - creating/updating a JetStream stream named `${namespace}_${key}` (work-queue retention),
-   - creating/updating a durable consumer named `default`,
-   - storing the configuration as JSON into a KV bucket named `${namespace}` (KV key is `${key}`).
-2. The collector starts and:
-   - loads all keys from the KV bucket,
-   - schedules a job for each key at `duration`,
-   - in each job run, fetches up to `batch` messages, `InsertMany` into MongoDB, and ACKs messages on success.
-3. The collector watches KV changes:
-   - `PUT` => subscribe/schedule the key
-   - `DELETE/PURGE` => delete the stream and remove the scheduled job
-4. The collector responds to state queries on `${namespace}.states` (request/reply), returning next runs and last run time for a key.
+## Prerequisites
+
+- NATS JetStream cluster
+- MongoDB 5.0+
 
 ## Configuration
 
-The collector reads a YAML file at `./config/values.yml`.
-
-Start from [values.example.yml](config/values.example.yml) and copy it to `config/values.yml`.
+Create `config/values.yml`:
 
 ```yaml
 mode: debug
 namespace: alpha
-description: lightweight queue-based collector
-duration: 5s
-batch: 1000
-nats:
-  hosts:
-    - nats://127.0.0.1:4222
-  token: your_token
-database:
-  url: mongodb://localhost:27017
-  name: example
+batch_size: 1000
+flush_interval: 5s
+nats_hosts:
+  - nats://127.0.0.1:4222
+nats_token: your-token
+mongo_url: mongodb://localhost:27017
+mongo_database: example
 ```
 
-- `mode`: `debug` / `release` (logging uses zap; `MODE=release` enables production logger)
-- `namespace`: KV bucket name, stream name prefix, and state query subject prefix
-- `duration`: schedule interval (`time.Duration` format, e.g. `5s`, `1m`)
-- `batch`: max messages fetched per run
+| Field | Description |
+|-------|-------------|
+| `mode` | `debug` or `release` |
+| `namespace` | Application namespace for stream/KV naming |
+| `batch_size` | Flush buffer when reaching this count |
+| `flush_interval` | Flush buffer at this interval |
+| `nats_hosts` | NATS server addresses |
+| `nats_token` | NATS authentication token |
+| `mongo_url` | MongoDB connection URL |
+| `mongo_database` | MongoDB database name |
 
-## Quick Start (Local)
+## Data Flow
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│ App Service │     │ App Service │     │ App Service │
+└──────┬──────┘     └──────┬──────┘     └──────┬──────┘
+       │                   │                   │
+       └───────────────────┼───────────────────┘
+                           │ Send BSON
+                           ▼
+                  ┌─────────────────┐
+                  │  Transfer SDK   │
+                  │  Publish BSON   │
+                  └────────┬────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     NATS JetStream                          │
+│  Stream: {namespace}_{key}                                  │
+│  Subject: {namespace}.{key}                                 │
+│  Consumer: default (WorkQueue)                              │
+│  KV Bucket: {namespace}                                     │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ Consume()
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Collector Pod                            │
+│                                                             │
+│   Message ──► Buffer ──► Flush ──► InsertMany               │
+│                 │                                           │
+│         (batch_size OR flush_interval)                      │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ Success: ACK / Fail: NAK
+                            ▼
+                  ┌─────────────────────────┐
+                  │        MongoDB          │
+                  └─────────────────────────┘
+```
+
+## Transfer SDK
+
+Client SDK for managing streams and publishing BSON payloads.
+
+```go
+import (
+    "context"
+    "time"
+
+    "github.com/kainonly/collector/v3/transfer"
+    "github.com/nats-io/nats.go"
+    "go.mongodb.org/mongo-driver/v2/bson"
+)
+
+func main() {
+    ctx := context.Background()
+    nc, _ := nats.Connect("nats://127.0.0.1:4222", nats.Token("your-token"))
+
+    // Create client
+    t, _ := transfer.New(ctx, "alpha", nc)
+
+    // Register stream
+    t.Add(ctx, transfer.Option{
+        Key:         "metrics",
+        Collection:  "metrics",
+        Description: "Metrics stream",
+    })
+
+    // Publish BSON data
+    t.Send("metrics", bson.M{
+        "ts":  time.Now(),
+        "cpu": 0.42,
+    })
+
+    // Query collector state
+    option, _ := t.Get(ctx, "metrics")
+    fmt.Println(option.BufferSize)
+
+    // Remove stream
+    t.Remove(ctx, "metrics")
+}
+```
+
+## Quick Start
 
 ```bash
 cp config/values.example.yml config/values.yml
 go run .
 ```
 
-## Producer Usage (transfer)
-
-The `transfer` package is a helper to manage streams/config (via JetStream + KV) and publish BSON payloads.
-
-```go
-package main
-
-import (
-	"context"
-	"time"
-
-	"github.com/kainonly/collector/v3/transfer"
-	"github.com/nats-io/nats.go"
-	"go.mongodb.org/mongo-driver/v2/bson"
-)
-
-func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	nc, _ := nats.Connect("nats://127.0.0.1:4222", nats.Token("your_token"))
-	t, _ := transfer.New(ctx, "alpha", nc)
-
-	_ = t.Add(ctx, transfer.Option{
-		Key:         "metrics",
-		Subs:        []string{"external.subject"},
-		Collection:  "metrics",
-		Description: "example stream",
-	})
-
-	_ = t.Send("metrics", bson.M{
-		"ts":  time.Now(),
-		"cpu": 0.42,
-	})
-}
-```
-
 ## Deploy
 
-The main container image is:
+Container image: `ghcr.io/kainonly/collector:latest`
 
-- `ghcr.io/kainonly/collector:latest`
-
-The image expects the `collector` binary under `/app/collector` and reads configuration from `./config/values.yml` (relative to working directory).
-
-Kubernetes deployment example (mount your `config/values.yml`):
+Kubernetes deployment example:
 
 ```yaml
 apiVersion: apps/v1
@@ -142,12 +179,13 @@ spec:
 
 ## Project Layout
 
-- `main.go`: entrypoint
-- `bootstrap/`: wiring, configuration, and dependency setup (NATS, JetStream, KV, MongoDB, scheduler)
-- `app/`: collector runtime (KV watch, scheduled fetch, Mongo writes)
-- `transfer/`: producer helper library (stream/KV management + publish)
-- `config/`: configuration examples
+- `main.go` - Entry point
+- `bootstrap/` - Configuration and dependency setup
+- `app/` - Collector runtime (KV watch, buffer, MongoDB writes)
+- `transfer/` - Producer SDK (stream/KV management + publish)
+- `common/` - Shared types and logger
+- `config/` - Configuration examples
 
 ## License
 
-[BSD-3-Clause License](https://github.com/kainonly/collector/blob/main/LICENSE)
+[BSD-3-Clause License](LICENSE)
