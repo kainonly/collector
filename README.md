@@ -26,7 +26,9 @@ A lightweight service for collecting and persisting time-series data. It consume
 ## Prerequisites
 
 - NATS JetStream cluster
-- MongoDB 5.0+
+- MongoDB 5.0+ with [Time Series Collections](https://www.mongodb.com/docs/manual/core/timeseries-collections/)
+
+> **Recommendation**: Use MongoDB Time Series Collections for optimal storage efficiency and query performance on time-series data. Create your collections with `timeseries` option before sending data.
 
 ## Configuration
 

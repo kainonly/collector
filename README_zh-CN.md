@@ -26,7 +26,9 @@
 ## 前提条件
 
 - NATS JetStream 集群
-- MongoDB 5.0+
+- MongoDB 5.0+ 并使用[时序集合](https://www.mongodb.com/docs/manual/core/timeseries-collections/)
+
+> **推荐**: 使用 MongoDB 时序集合可获得最佳的存储效率和时序数据查询性能。请在发送数据前使用 `timeseries` 选项创建集合。
 
 ## 配置
 
