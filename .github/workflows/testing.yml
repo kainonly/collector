@@ -1,0 +1,104 @@
+name: Testing
+
+on:
+  push:
+    branches: [ v3 ]
+    paths-ignore:
+      - 'README*'
+      - 'docs/**'
+  pull_request:
+    branches: [ v3 ]
+    paths-ignore:
+      - 'README*'
+      - 'docs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      GO111MODULE: on
+      NATS_NAMESPACE: test
+      NATS_HOST: nats://127.0.0.1:4222
+      NATS_TOKEN: s3cr3t
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start NATS cluster
+        run: docker compose -f ".github/compose/docker-compose.yml" up -d
+
+      - name: Wait for NATS cluster
+        run: |
+          for i in {1..30}; do
+            if nc -z localhost 4222; then
+              echo "NATS is ready"
+              break
+            fi
+            echo "Waiting for NATS..."
+            sleep 1
+          done
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Prepare test config
+        run: |
+          cat > config/values.yml <<'EOF'
+          mode: debug
+          namespace: test
+          stream: audits
+          nats_hosts:
+            - nats://127.0.0.1:4222
+          nats_token: s3cr3t
+          victoria: http://localhost:9428
+          victoria_path: /insert/jsonline?_stream_fields=stream&_msg_field=msg&_time_field=time
+          batch_size: 100
+          flush_interval: 5s
+          EOF
+
+      - name: Start auditstream service
+        run: |
+          go run . >/tmp/auditstream.log 2>&1 &
+          echo $! > /tmp/auditstream.pid
+
+      - name: Wait for auditstream
+        run: |
+          for i in {1..30}; do
+            if grep -q "stream initialized" /tmp/auditstream.log; then
+              echo "auditstream is ready"
+              break
+            fi
+            echo "Waiting for auditstream..."
+            sleep 1
+          done
+
+      - name: Run tests with coverage
+        run: go test -race -covermode atomic -coverprofile=covprofile ./transfer/...
+
+      - name: Stop auditstream service
+        if: always()
+        run: |
+          if [ -f /tmp/auditstream.pid ]; then
+            kill "$(cat /tmp/auditstream.pid)" || true
+          fi
+
+      - name: Upload coverage to Coveralls
+        if: success() && github.event_name == 'push'
+        run: |
+          go install github.com/mattn/goveralls@latest
+          goveralls -coverprofile=covprofile -service=github
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
