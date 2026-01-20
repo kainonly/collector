@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
+// Transfer 是生产者端的客户端 SDK，用于管理流和发布消息
 type Transfer struct {
 	Namespace string
 	Nc        *nats.Conn
@@ -20,10 +21,10 @@ type Transfer struct {
 	Kv        jetstream.KeyValue
 }
 
-// New creates a Transfer instance bound to a namespace KV bucket.
+// New 创建绑定到命名空间 KV 存储桶的 Transfer 实例
 func New(ctx context.Context, namespace string, nc *nats.Conn, opts ...jetstream.JetStreamOpt) (x *Transfer, err error) {
 	if strings.Contains(namespace, "-") {
-		return nil, errors.New(`namespace cannot contain '-'`)
+		return nil, errors.New(`namespace 不能包含 '-'`)
 	}
 	x = &Transfer{Namespace: namespace, Nc: nc}
 	if x.Js, err = jetstream.New(nc, opts...); err != nil {
@@ -35,14 +36,17 @@ func New(ctx context.Context, namespace string, nc *nats.Conn, opts ...jetstream
 	return
 }
 
+// StreamName 返回流名称
 func (x *Transfer) StreamName(key string) string {
 	return fmt.Sprintf(`%s_%s`, x.Namespace, key)
 }
 
+// SubName 返回订阅主题名称
 func (x *Transfer) SubName(key string) string {
 	return fmt.Sprintf(`%s.%s`, x.Namespace, key)
 }
 
+// Option 是流配置选项
 type Option struct {
 	Key         string   `json:"key"`
 	Subs        []string `json:"subs"`
@@ -51,12 +55,12 @@ type Option struct {
 	*State
 }
 
+// State 是收集器状态
 type State struct {
-	Nexts []time.Time `json:"nexts,omitempty"`
-	Last  time.Time   `json:"last,omitempty"`
+	BufferSize int `json:"buffer_size"`
 }
 
-// Get returns the option from KV and enriches it with state data queried from the collector.
+// Get 从 KV 获取配置，并通过收集器查询状态数据
 func (x *Transfer) Get(ctx context.Context, key string) (option *Option, err error) {
 	var entry jetstream.KeyValueEntry
 	if entry, err = x.Kv.Get(ctx, key); err != nil {
@@ -75,7 +79,7 @@ func (x *Transfer) Get(ctx context.Context, key string) (option *Option, err err
 	return
 }
 
-// Add creates/updates a work-queue stream and persists its config into KV.
+// Add 创建/更新工作队列流并将配置持久化到 KV
 func (x *Transfer) Add(ctx context.Context, option Option) (err error) {
 	subjects := []string{x.SubName(option.Key)}
 	for _, sub := range option.Subs {
@@ -109,7 +113,7 @@ func (x *Transfer) Add(ctx context.Context, option Option) (err error) {
 	return
 }
 
-// Send publishes a BSON-encoded payload to the configured subject for key.
+// Send 发布 BSON 编码的数据到指定 key 的主题
 func (x *Transfer) Send(key string, data any) (err error) {
 	var content []byte
 	if content, err = bson.Marshal(data); err != nil {
@@ -121,7 +125,7 @@ func (x *Transfer) Send(key string, data any) (err error) {
 	return
 }
 
-// Remove deletes the configuration from KV (collector will unsubscribe on KV watch).
+// Remove 从 KV 删除配置（收集器会通过 KV 监听自动取消订阅）
 func (x *Transfer) Remove(ctx context.Context, key string) (err error) {
 	return x.Kv.Delete(ctx, key)
 }

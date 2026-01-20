@@ -18,11 +18,11 @@ var x *transfer.Transfer
 
 func TestMain(m *testing.M) {
 	if os.Getenv("TRANSFER_INTEGRATION") != "1" {
-		fmt.Fprintln(os.Stderr, "transfer integration tests are skipped (set TRANSFER_INTEGRATION=1).")
+		fmt.Fprintln(os.Stderr, "transfer 集成测试已跳过（设置 TRANSFER_INTEGRATION=1 启用）")
 		os.Exit(0)
 	}
 	if os.Getenv("NATS_HOSTS") == "" {
-		fmt.Fprintln(os.Stderr, "transfer integration tests are skipped (missing NATS_HOSTS).")
+		fmt.Fprintln(os.Stderr, "transfer 集成测试已跳过（缺少 NATS_HOSTS）")
 		os.Exit(0)
 	}
 
@@ -49,7 +49,7 @@ func MakeTransfer() (err error) {
 	}
 	if _, err = js.CreateOrUpdateKeyValue(context.TODO(), jetstream.KeyValueConfig{
 		Bucket:      "alpha",
-		Description: "test bucket",
+		Description: "测试存储桶",
 		History:     3,
 		Compression: true,
 	}); err != nil {
@@ -76,8 +76,7 @@ func TestTransfer_Get(t *testing.T) {
 	result, err := x.Get(ctx, `audit`)
 	assert.NoError(t, err)
 	t.Log(result)
-	t.Log(result.Nexts)
-	t.Log(result.Last)
+	t.Log(result.BufferSize)
 }
 
 type MsgData struct {

@@ -1,14 +1,11 @@
 mode: debug
 namespace: alpha
-description: 轻量队列流收集器
-duration: 5s
-batch: 1000
-nats:
-  hosts:
-    - nats://127.0.0.1:1222
-    - nats://127.0.0.1:1223
-    - nats://127.0.0.1:1224
-  token: s3cr3t
-database:
-  url: mongodb://localhost:27017
-  name: example
+batch_size: 1000
+flush_interval: 5s
+nats_hosts:
+  - nats://127.0.0.1:1222
+  - nats://127.0.0.1:1223
+  - nats://127.0.0.1:1224
+nats_token: s3cr3t
+mongo_url: mongodb://localhost:27017
+mongo_database: example

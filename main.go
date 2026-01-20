@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/kainonly/collector/v3/app"
 	"github.com/kainonly/collector/v3/bootstrap"
 	"github.com/kainonly/collector/v3/common"
 )
@@ -14,21 +15,53 @@ func main() {
 	if common.Log, err = bootstrap.SetZap(); err != nil {
 		panic(err)
 	}
-	ctx := context.Background()
-	app, err := bootstrap.NewApp(ctx)
+
+	values, err := bootstrap.LoadStaticValues()
 	if err != nil {
 		panic(err)
 	}
-	if err = app.States(); err != nil {
+
+	nc, err := bootstrap.UseNats(values)
+	if err != nil {
+		panic(err)
+	}
+	defer nc.Close()
+
+	js, err := bootstrap.UseJetStream(nc)
+	if err != nil {
 		panic(err)
 	}
 
-	if err = app.Run(ctx); err != nil {
+	kv, err := bootstrap.UseKeyValue(values, js)
+	if err != nil {
 		panic(err)
 	}
 
-	// Block until interrupted to keep subscriptions and scheduler running.
+	mc, err := bootstrap.UseMongo(values)
+	if err != nil {
+		panic(err)
+	}
+	defer mc.Disconnect(context.Background())
+
+	db := bootstrap.UseDatabase(values, mc)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	x := app.New(values, nc, js, kv, db)
+	if err = x.States(); err != nil {
+		panic(err)
+	}
+
+	go func() {
+		if err := x.Run(ctx); err != nil {
+			common.Log.Error(err.Error())
+		}
+	}()
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
+
+	cancel()
+	x.Close()
 }
