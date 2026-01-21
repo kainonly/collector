@@ -1,5 +1,5 @@
 mode: debug
-namespace: alpha
+namespace: test
 batch_size: 1000
 flush_interval: 5s
 nats_hosts:

@@ -27,9 +27,6 @@ go run -mod=mod github.com/goforj/wire/cmd/wire ./bootstrap
 
 # Run tests
 go test ./...
-
-# Integration tests (requires running NATS)
-TRANSFER_INTEGRATION=1 NATS_HOSTS="nats://127.0.0.1:4222" NATS_TOKEN="token" go test ./transfer -v
 ```
 
 ## Architecture
