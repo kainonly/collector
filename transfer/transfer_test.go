@@ -4,6 +4,9 @@ import (
 	"testing"
 )
 
+// TestStreamName 测试流名称生成。
+//
+// 验证 StreamName 方法正确生成 {namespace}_{key} 格式的流名称。
 func TestStreamName(t *testing.T) {
 	x := &Transfer{Namespace: "test"}
 
@@ -23,6 +26,9 @@ func TestStreamName(t *testing.T) {
 	}
 }
 
+// TestSubName 测试订阅主题名称生成。
+//
+// 验证 SubName 方法正确生成 {namespace}.{key} 格式的主题名称。
 func TestSubName(t *testing.T) {
 	x := &Transfer{Namespace: "test"}
 
