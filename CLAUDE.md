@@ -25,8 +25,11 @@ MODE=release go run .
 # Regenerate wire dependency injection (after modifying bootstrap/wire.go)
 go run -mod=mod github.com/goforj/wire/cmd/wire ./bootstrap
 
-# Run tests
-go test ./...
+# Run unit tests (excludes e2e)
+go test $(go list ./... | grep -v /e2e)
+
+# Run e2e tests (requires .env with NATS_HOSTS)
+go test ./e2e -v
 ```
 
 ## Architecture

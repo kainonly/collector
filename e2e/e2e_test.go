@@ -20,7 +20,7 @@ var x *transfer.Transfer
 
 func TestMain(m *testing.M) {
 	// 加载 .env 文件（如果存在）
-	_ = godotenv.Load()
+	_ = godotenv.Load("../.env")
 
 	// 从环境变量获取配置
 	natsHosts := os.Getenv("NATS_HOSTS")
