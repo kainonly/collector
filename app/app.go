@@ -206,7 +206,7 @@ func (x *App) Subscribe(option Option) (err error) {
 
 	// 创建并启动收集器
 	collector := NewCollector(x, option)
-	if err = collector.Start(consumer); err != nil {
+	if err = collector.Start(option.Key, consumer); err != nil {
 		return
 	}
 

@@ -54,7 +54,7 @@ func NewCollector(app *App, option Option) *Collector {
 // 启动两个并发任务：
 //   - 消息接收回调：将消息推入缓冲区
 //   - 定时刷新循环：按 FlushInterval 定期刷新
-func (c *Collector) Start(consumer jetstream.Consumer) (err error) {
+func (c *Collector) Start(key string, consumer jetstream.Consumer) (err error) {
 	// 使用 push-based 消费模式
 	if c.cc, err = consumer.Consume(func(msg jetstream.Msg) {
 		c.push(msg)

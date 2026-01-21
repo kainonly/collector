@@ -59,40 +59,42 @@ jobs:
           cat > config/values.yml <<'EOF'
           mode: debug
           namespace: test
-          stream: audits
+          description: 测试收集器
+          batch_size: 1000
+          flush_interval: 5s
           nats_hosts:
             - nats://127.0.0.1:4222
+            - nats://127.0.0.1:4223
+            - nats://127.0.0.1:4224
           nats_token: s3cr3t
-          victoria: http://localhost:9428
-          victoria_path: /insert/jsonline?_stream_fields=stream&_msg_field=msg&_time_field=time
-          batch_size: 100
-          flush_interval: 5s
+          mongo_url: mongodb://root:password@127.0.0.1:27017
+          mongo_database: test
           EOF
 
-      - name: Start auditstream service
+      - name: Start collector service
         run: |
-          go run . >/tmp/auditstream.log 2>&1 &
-          echo $! > /tmp/auditstream.pid
+          go run . >/tmp/collector.log 2>&1 &
+          echo $! > /tmp/collector.pid
 
-      - name: Wait for auditstream
+      - name: Wait for collector
         run: |
           for i in {1..30}; do
-            if grep -q "stream initialized" /tmp/auditstream.log; then
-              echo "auditstream is ready"
+            if grep -q "stream initialized" /tmp/collector.log; then
+              echo "collector is ready"
               break
             fi
-            echo "Waiting for auditstream..."
+            echo "Waiting for collector..."
             sleep 1
           done
 
       - name: Run tests with coverage
         run: go test -race -covermode atomic -coverprofile=covprofile ./transfer/...
 
-      - name: Stop auditstream service
+      - name: Stop collector service
         if: always()
         run: |
-          if [ -f /tmp/auditstream.pid ]; then
-            kill "$(cat /tmp/auditstream.pid)" || true
+          if [ -f /tmp/collector.pid ]; then
+            kill "$(cat /tmp/collector.pid)" || true
           fi
 
       - name: Upload coverage to Coveralls
