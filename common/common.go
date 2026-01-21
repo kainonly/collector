@@ -24,6 +24,9 @@ type Values struct {
 	// 注意：不能包含连字符 '-'
 	Namespace string `yaml:"namespace"`
 
+	// Description KV 存储桶的描述信息
+	Description string `yaml:"description"`
+
 	// BatchSize 缓冲区达到此数量时触发写入 MongoDB
 	BatchSize int `yaml:"batch_size"`
 

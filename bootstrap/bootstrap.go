@@ -98,11 +98,13 @@ func UseJetStream(nc *nats.Conn) (jetstream.JetStream, error) {
 //
 // 存储桶配置：
 //   - Bucket: 使用命名空间作为存储桶名称
+//   - Description: 存储桶描述信息
 //   - History: 保留 3 个历史版本
 //   - Compression: 启用压缩
 func UseKeyValue(values *common.Values, js jetstream.JetStream) (jetstream.KeyValue, error) {
 	return js.CreateOrUpdateKeyValue(context.TODO(), jetstream.KeyValueConfig{
 		Bucket:      values.Namespace,
+		Description: values.Description,
 		History:     3,
 		Compression: true,
 	})
