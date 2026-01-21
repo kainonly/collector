@@ -88,7 +88,7 @@ jobs:
           done
 
       - name: Run tests with coverage
-        run: go test -race -covermode atomic -coverprofile=covprofile ./transfer/...
+        run: go test -race -covermode atomic -coverprofile=covprofile ./...
 
       - name: Stop collector service
         if: always()
